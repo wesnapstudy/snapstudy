@@ -144,7 +144,7 @@ When full video cannot be saved, original chunks are stored in S3. Metadata link
 1. User uploads file → Store in S3 → Trigger Step Function
 2. Extract content: PDF → Textract, Audio/Video → Transcribe, YouTube → Download + Transcribe
 3. Analyze structure using Bedrock Claude: Extract topics, concepts, learning objectives, difficulty level
-4. Personalize content using Bedrock Claude: Rewrite based on user's age, profession, learning style, attention span, interests
+4. Personalize content using Bedrock Claude: Rewrite based on user's age, profession, education level, learning style/preferred lesson length, attention span, interests
 5. Save processed lesson to DynamoDB
 6. Trigger Adaptive Learning Agent (Component 3)
 
@@ -1042,4 +1042,4 @@ Frontend:
 6. **Frontend** deployed on AWS Amplify
 7. **README.md** with setup instructions and demo credentials
 8. **Demo video** (< 5 minutes) showing autonomous capabilities
-9. **Architecture diagram** (PNG/PDF)
+9. **Architecture diagram** (PNG/PDF)'
