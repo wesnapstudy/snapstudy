@@ -356,64 +356,97 @@ def analyze_performance_and_adapt(self, quiz_score: float, completion_time: int,
 - Positive reinforcement and encouragement
 - Feedback collection
 
-**Special Commands:**
-- `/summarize` - Summarize current micro-lesson
-- `/explain [concept]` - Deep dive explanation
-- `/repeat` - Explain differently
-- `/quiz` - Additional practice questions
-- `/progress` - Show learning progress
-- `/help` - List available commands
+**Natural Agentic Chat System:**
+The chat agent uses **AgentCore primitives** to intelligently interpret user intent from natural conversation without requiring special commands. The agent autonomously decides what type of response is needed based on conversational context.
 
-**Bedrock Prompt Guidelines:**
-- Input: Learner name + current micro-lesson content + conversation history + user message
-- Task: Answer helpfully, reference lesson content, adjust complexity to learner level, keep responses concise (2-3 paragraphs)
-- Maintain friendly tone, admit when unsure
+**Intent Recognition Examples:**
+- **Summarization Intent**: "Can you recap what we covered?", "What were the main points?", "I'm lost, can you summarize?"
+- **Explanation Intent**: "I don't understand X", "Can you explain this differently?", "What does Y mean?"
+- **Quiz Intent**: "Test my knowledge", "Ask me questions", "Am I ready for a quiz?"
+- **Progress Intent**: "How am I doing?", "What's my progress?", "Am I ready to move on?"
+- **Help Intent**: "What can you help me with?", "I need assistance", "How does this work?"
+
+**AgentCore Integration:**
+- **Reasoning over Context**: Analyzes user message, conversation history, and lesson context to determine intent
+- **Function Invocation**: Calls appropriate functions (summarize, explain, quiz, progress) based on recognized intent
+- **Memory Management**: Maintains conversation context and user preferences across sessions
+- **Adaptive Responses**: Tailors communication style to user's learning preferences
 
 **API Endpoints:**
-- WebSocket /chat - Real-time chat connection
-- POST /chat/message - Send message (REST fallback)
-- GET /chat/history?session_id={id} - Retrieve history
+- WebSocket /chat - Real-time chat connection with agentic processing
+- POST /chat/message - Send message (REST fallback) with intent analysis
+- GET /chat/history?session_id={id} - Retrieve conversation history
 
-**WebSocket Architecture:**
+**Agentic Chat Architecture:**
 ```python
-class ChatAgent:
+class AgenticChatAgent:
     def __init__(self):
+        self.agent_core = BedrockAgentCore()
         self.bedrock_client = boto3.client('bedrock-runtime')
         
     async def handle_message(self, connection_id: str, message: str, context: dict):
-        """Handle real-time chat messages"""
+        """Handle real-time chat messages with agentic intent recognition"""
         
-        # Check for special commands
-        if message.startswith('/'):
-            return await self.handle_command(message, context)
-            
-        # Generate context-aware response
-        response = await self.generate_response(message, context)
+        # Use AgentCore to analyze intent and context
+        intent_analysis = await self.agent_core.reason_over_context(
+            context={
+                'user_message': message,
+                'conversation_history': context.get('chat_history', []),
+                'lesson_context': context.get('current_lesson', {}),
+                'user_profile': context.get('user_profile', {}),
+                'learning_progress': context.get('progress', {})
+            },
+            goal="understand_user_intent_and_provide_appropriate_response"
+        )
+        
+        # Execute appropriate function based on intent
+        response = await self._execute_intent_based_response(intent_analysis, context)
         
         # Send via WebSocket
         await self.send_websocket_message(connection_id, response)
         
-        # Update conversation history
-        self.update_chat_history(connection_id, message, response)
+        # Update conversation memory
+        await self.agent_core.update_memory(context['user_id'], {
+            'user_message': message,
+            'agent_response': response,
+            'recognized_intent': intent_analysis.get('intent'),
+            'context': context
+        })
 ```
 
-**Special Commands Implementation:**
+**Intent-Based Response System:**
 ```python
-def handle_command(self, command: str, context: dict) -> str:
-    """Handle special chat commands"""
+async def _execute_intent_based_response(self, intent_analysis: dict, context: dict) -> str:
+    """Execute appropriate response based on recognized intent"""
     
-    commands = {
-        '/summarize': self.summarize_current_lesson,
-        '/explain': self.explain_concept,
-        '/repeat': self.alternative_explanation,
-        '/quiz': self.generate_practice_questions,
-        '/progress': self.show_progress,
-        '/help': self.show_help
-    }
+    intent = intent_analysis.get('intent', 'general_chat')
+    confidence = intent_analysis.get('confidence', 0.7)
     
-    cmd_name = command.split()[0]
-    if cmd_name in commands:
-        return commands[cmd_name](command, context)
+    if intent == 'summarization' and confidence > 0.8:
+        return await self.agent_core.invoke_function('summarize_lesson', {
+            'lesson_content': context.get('current_lesson', {}),
+            'user_profile': context.get('user_profile', {})
+        })
+    elif intent == 'explanation' and confidence > 0.8:
+        concept = intent_analysis.get('concept_to_explain', '')
+        return await self.agent_core.invoke_function('explain_concept', {
+            'concept': concept,
+            'lesson_context': context.get('current_lesson', {}),
+            'user_learning_style': context.get('user_profile', {}).get('learning_style')
+        })
+    elif intent == 'quiz_request' and confidence > 0.8:
+        return await self.agent_core.invoke_function('generate_practice_quiz', {
+            'lesson_content': context.get('current_lesson', {}),
+            'difficulty': context.get('user_profile', {}).get('difficulty_level')
+        })
+    elif intent == 'progress_inquiry' and confidence > 0.8:
+        return await self.agent_core.invoke_function('show_progress', {
+            'user_id': context.get('user_id'),
+            'lesson_id': context.get('lesson_id')
+        })
+    else:
+        # General conversational response
+        return await self._generate_contextual_response(intent_analysis, context)
 ```
 
 ### Component 5: Frontend Web Application
@@ -1002,11 +1035,12 @@ Frontend:
 - Low scores trigger review content
 - High scores increase difficulty
 
-**Component 4 (Chat Agent):**
-- Chat responses are contextually relevant
+**Component 4 (Agentic Chat Agent):**
+- Chat responses are contextually relevant and naturally conversational
 - Response time < 3 seconds
-- Summarization is accurate
-- Special commands work (/summarize, /explain)
+- Intent recognition accuracy > 90% for common requests
+- Natural language processing works for summarization, explanation, quiz, and progress requests
+- Autonomous function selection based on conversational context
 
 **Component 5 (Frontend):**
 - All pages responsive on mobile/tablet/desktop

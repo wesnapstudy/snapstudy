@@ -833,7 +833,7 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02PwU7DMAyGn2X31IxyAI7bkLiAQB2cUZp6JWsaV41DVUV5d5Rmm3ry5++3LLuEp0fYbuTkCtV0hdE1hCNL1Qk5uZ/QzFb21NQQvmRtUBxOdoEo3AOEvVcdcpKZolDUWs0E4dvh+ElkUnjjKxyMRsvrKJso5KBbyTjJGUKFjneDTmMr3ClF3rJ4wcHQ3F/2rLojy3Y5NEOFjvyocC8dinfkX2pSmCkKLXsIFeXXUo3CUOsgvFH7OpIfkr9yjLd1SX94Hjxf7ltsFJYahLO7+ytLuH+G7ebstC5Gb1n3CFWu/7NpRIR1AQAA"
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/02PwU7DMAyGn2X31FTlANdtSFxAoA7OKE1NlzWNq8ahqqK8O0qzTT358/dbll3B8xOUOzm7QrV9YXQD4cRS9ULO7ie0i5UDtQ2EL9kYFMdfu0IU7hHCwaseOclMUSjqrGaC8O1w+iQyKbzzDY5Go+VtlE0UctSdZJzlAqFGx/tRp7EN7pUib1m84GhoGa57Nt2JZbcemqFGR35SeJAOxTvymdoUZopCywFCTfm1VKMw1DkIb9S9TuTH5G8c431d0h+eR8/X+1YbhaUW4eIe/qoKqhLK3cVpXUzesh4Q6lz/AXmGgeJ1AQAA"
    },
    "Metadata": {
     "aws:cdk:path": "SnapStudyStack/CDKMetadata/Default"
