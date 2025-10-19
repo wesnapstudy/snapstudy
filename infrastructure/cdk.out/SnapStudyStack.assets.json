@@ -1,17 +1,17 @@
 {
   "version": "32.0.0",
   "files": {
-    "9fc5dfce2651e558b26e30ec61ab74a31b1be63d30b21f7d08b9aaee5bdccbf3": {
+    "96967c2a236590b3dac06bfc4555da8117a71b74ea60bd38bae3e90175b8fda0": {
       "source": {
         "path": "SnapStudyStack.template.json",
         "packaging": "file"
       },
       "destinations": {
-        "current_account-us-east-1": {
-          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1",
-          "objectKey": "9fc5dfce2651e558b26e30ec61ab74a31b1be63d30b21f7d08b9aaee5bdccbf3.json",
+        "054037102331-us-east-1": {
+          "bucketName": "cdk-hnb659fds-assets-054037102331-us-east-1",
+          "objectKey": "96967c2a236590b3dac06bfc4555da8117a71b74ea60bd38bae3e90175b8fda0.json",
           "region": "us-east-1",
-          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-us-east-1"
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::054037102331:role/cdk-hnb659fds-file-publishing-role-054037102331-us-east-1"
         }
       }
     }

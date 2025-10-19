@@ -1,6 +1,5 @@
 # Load AWS Credentials Script
-# This script loads AWS credentials from environment variables first,
-# then falls back to .env file if not found
+# This script loads AWS credentials exclusively from .env file
 
 param(
     [switch]$Verbose
@@ -44,15 +43,15 @@ function Load-EnvFile {
                     $value = $matches[1]
                 }
                 
-                # Only set if not already in environment
-                if (-not [System.Environment]::GetEnvironmentVariable($name)) {
-                    [System.Environment]::SetEnvironmentVariable($name, $value, "Process")
-                    Write-Info "Set $name from .env file"
-                }
+                # Always set from .env file, overriding any existing environment variables
+                [System.Environment]::SetEnvironmentVariable($name, $value, "Process")
+                Write-Info "Set $name from .env file"
             }
         }
+        return $true
     } else {
         Write-Warning ".env file not found at $filePath"
+        return $false
     }
 }
 
@@ -70,7 +69,6 @@ function Test-AwsCredentials {
             return $true
         }
     } catch {
-        Write-Warning "AWS credentials test failed: $($_.ToString())"
         Write-Warning "AWS credentials test failed: $_"
         return $false
     }
@@ -79,81 +77,59 @@ function Test-AwsCredentials {
 }
 
 # Main execution
-Write-Info "Loading AWS credentials..."
+Write-Info "Loading AWS credentials from .env file only..."
 
-# Step 1: Check if credentials are already in environment variables
-$hasEnvCredentials = $false
+# Load credentials exclusively from .env file
+$envFileLoaded = Load-EnvFile ".env"
+
+if (-not $envFileLoaded) {
+    Write-Error "No .env file found"
+    Write-Host ""
+    Write-Host "To configure AWS credentials:" -ForegroundColor Yellow
+    Write-Host "1. Create a .env file in the infrastructure directory" -ForegroundColor Yellow
+    Write-Host "2. Add the following variables:" -ForegroundColor Yellow
+    Write-Host "   AWS_ACCESS_KEY_ID=your_access_key" -ForegroundColor Gray
+    Write-Host "   AWS_SECRET_ACCESS_KEY=your_secret_key" -ForegroundColor Gray
+    Write-Host "   AWS_REGION=your_region" -ForegroundColor Gray
+    Write-Host "   AWS_ACCOUNT_ID=your_account_id" -ForegroundColor Gray
+    exit 1
+}
+
+# Check if required credentials are now available
 if ($env:AWS_ACCESS_KEY_ID -and $env:AWS_SECRET_ACCESS_KEY) {
-    Write-Success "AWS credentials found in environment variables"
-    $hasEnvCredentials = $true
-} else {
-    Write-Info "AWS credentials not found in environment variables"
-}
-
-# Step 2: Load from .env file if not in environment
-if (-not $hasEnvCredentials) {
-    Write-Info "Attempting to load credentials from .env file..."
-    Load-EnvFile ".env"
+    Write-Success "AWS credentials loaded from .env file"
     
-    # Check if credentials are now available
-    if ($env:AWS_ACCESS_KEY_ID -and $env:AWS_SECRET_ACCESS_KEY) {
-        Write-Success "AWS credentials loaded from .env file"
-        $hasEnvCredentials = $true
-    } else {
-        Write-Warning "AWS credentials not found in .env file"
-    }
-}
-
-# Step 3: Check if credentials are now available after loading from .env
-if (-not $hasEnvCredentials) {
-    Write-Info "Checking if credentials are now available..."
-    if ($env:AWS_ACCESS_KEY_ID -and $env:AWS_SECRET_ACCESS_KEY) {
-        Write-Success "AWS credentials are now available"
-        $hasEnvCredentials = $true
-    } else {
-        Write-Info "No AWS credentials found in environment or .env file"
-    }
-}
-
-# Step 4: Test credentials
-if ($hasEnvCredentials) {
+    # Test credentials
     if (Test-AwsCredentials) {
         Write-Success "AWS credentials are configured and valid"
-        
-        # Display current configuration
-        Write-Host ""
-        Write-Host "Current AWS Configuration:" -ForegroundColor Cyan
-        Write-Host "=========================" -ForegroundColor Cyan
-        
-        if ($env:AWS_REGION) {
-            Write-Host "Region: $env:AWS_REGION" -ForegroundColor Gray
-        }
-        if ($env:AWS_ACCOUNT_ID) {
-            Write-Host "Account ID: $env:AWS_ACCOUNT_ID" -ForegroundColor Gray
-        }
-        if ($env:ENVIRONMENT) {
-            Write-Host "Environment: $env:ENVIRONMENT" -ForegroundColor Gray
-        }
-        
-        exit 0
     } else {
-        Write-Warning "AWS credentials are configured but may be invalid or expired"
-        Write-Info "Credentials are loaded from .env file but AWS validation failed"
+        Write-Warning "AWS credentials loaded but validation failed"
         Write-Info "This may be due to expired credentials or network issues"
-        exit 0  # Don't fail completely, let deployment proceed
     }
+    
+    # Display current configuration
+    Write-Host ""
+    Write-Host "Current AWS Configuration:" -ForegroundColor Cyan
+    Write-Host "=========================" -ForegroundColor Cyan
+    
+    if ($env:AWS_REGION) {
+        Write-Host "Region: $env:AWS_REGION" -ForegroundColor Gray
+    }
+    if ($env:AWS_ACCOUNT_ID) {
+        Write-Host "Account ID: $env:AWS_ACCOUNT_ID" -ForegroundColor Gray
+    }
+    if ($env:ENVIRONMENT) {
+        Write-Host "Environment: $env:ENVIRONMENT" -ForegroundColor Gray
+    }
+    
+    exit 0
 } else {
-    Write-Error "No valid AWS credentials found"
+    Write-Error "Required AWS credentials not found in .env file"
     Write-Host ""
-    Write-Host "To configure AWS credentials, you can:" -ForegroundColor Yellow
-    Write-Host "1. Set environment variables:" -ForegroundColor Yellow
-    Write-Host "   - AWS_ACCESS_KEY_ID" -ForegroundColor Gray
-    Write-Host "   - AWS_SECRET_ACCESS_KEY" -ForegroundColor Gray
-    Write-Host "   - AWS_REGION (optional)" -ForegroundColor Gray
-    Write-Host ""
-    Write-Host "2. Update .env file with your credentials" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "3. Run 'aws configure' to set up AWS CLI" -ForegroundColor Yellow
+    Write-Host "Please ensure your .env file contains:" -ForegroundColor Yellow
+    Write-Host "   AWS_ACCESS_KEY_ID=your_access_key" -ForegroundColor Gray
+    Write-Host "   AWS_SECRET_ACCESS_KEY=your_secret_key" -ForegroundColor Gray
+    Write-Host "   AWS_REGION=your_region (optional)" -ForegroundColor Gray
     
     exit 1
 }

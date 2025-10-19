@@ -359,18 +359,7 @@
       }
      ]
     },
-    "BucketName": {
-     "Fn::Join": [
-      "",
-      [
-       "snapstudy-content-",
-       {
-        "Ref": "AWS::AccountId"
-       },
-       "-us-east-1"
-      ]
-     ]
-    },
+    "BucketName": "snapstudy-content-054037102331-us-east-1",
     "CorsConfiguration": {
      "CorsRules": [
       {
