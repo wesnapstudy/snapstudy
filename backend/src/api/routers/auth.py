@@ -1,83 +1,148 @@
 """Authentication API endpoints."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Dict, Any
+import jwt
+import hashlib
+import uuid
+from datetime import datetime, timedelta
 
 from ...models.user import UserRegistration, UserLogin, AuthToken
-from ...services.auth import auth_service
-from ...services.dynamodb import db_service
 
 router = APIRouter()
+security = HTTPBearer()
+
+# Simple in-memory user store for demo (replace with real database)
+users_db = {}
+SECRET_KEY = "your-secret-key-change-in-production"
+ALGORITHM = "HS256"
+
+def hash_password(password: str) -> str:
+    """Hash password using SHA256."""
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def verify_password(password: str, hashed: str) -> bool:
+    """Verify password against hash."""
+    return hash_password(password) == hashed
+
+def create_access_token(user_id: str, email: str) -> str:
+    """Create JWT access token."""
+    expire = datetime.utcnow() + timedelta(hours=24)
+    payload = {
+        "user_id": user_id,
+        "email": email,
+        "exp": expire
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_token(token: str) -> Dict[str, Any]:
+    """Verify JWT token and return payload."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current user from token."""
+    payload = verify_token(credentials.credentials)
+    user_id = payload.get("user_id")
+    if not user_id or user_id not in users_db:
+        raise HTTPException(status_code=401, detail="User not found")
+    return users_db[user_id]
 
 @router.post("/register", response_model=Dict[str, Any])
 async def register_user(registration: UserRegistration):
     """Register a new user."""
     try:
-        # Check if user already exists in our database
-        existing_user = await db_service.get_user_by_email(registration.email)
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User with this email already exists"
-            )
+        # Check if user already exists
+        for user in users_db.values():
+            if user["email"] == registration.email:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="User with this email already exists"
+                )
         
-        # Register with Cognito
-        cognito_user = await auth_service.register_user(registration)
-        
-        # Create user in our database
+        # Create new user
+        user_id = str(uuid.uuid4())
         user_data = {
-            'email': registration.email,
-            'full_name': registration.full_name,
-            'profession': registration.profession,
-            'education_level': registration.education_level,
-            'country': registration.country,
-            'is_active': True
+            "id": user_id,
+            "user_id": user_id,
+            "email": registration.email,
+            "password_hash": hash_password(registration.password),
+            "username": registration.full_name.split()[0] if registration.full_name else "",
+            "first_name": registration.full_name.split()[0] if registration.full_name else "",
+            "last_name": " ".join(registration.full_name.split()[1:]) if len(registration.full_name.split()) > 1 else "",
+            "full_name": registration.full_name,
+            "profession": registration.profession,
+            "education_level": registration.education_level,
+            "country": registration.country,
+            "is_active": True,
+            "created_at": datetime.utcnow().isoformat()
         }
         
-        # Use the Cognito user ID
-        user_data['user_id'] = cognito_user['user_id']
-        db_user = await db_service.create_user(user_data)
+        users_db[user_id] = user_data
+        
+        # Create access token
+        access_token = create_access_token(user_id, registration.email)
         
         return {
-            "message": "User registered successfully",
-            "user_id": db_user['user_id'],
-            "email": db_user['email']
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user_id,
+                "email": registration.email,
+                "username": user_data["username"],
+                "first_name": user_data["first_name"],
+                "last_name": user_data["last_name"]
+            }
         }
         
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed"
         )
 
-@router.post("/login", response_model=AuthToken)
+@router.post("/login", response_model=Dict[str, Any])
 async def login_user(login: UserLogin):
     """Authenticate user and return access token."""
     try:
-        # Authenticate with Cognito
-        token = await auth_service.authenticate_user(login)
+        # Find user by email
+        user = None
+        for u in users_db.values():
+            if u["email"] == login.email:
+                user = u
+                break
         
-        # Track login engagement
-        user = await db_service.get_user_by_email(login.email)
-        if user:
-            await db_service.track_engagement({
-                'user_id': user['user_id'],
-                'event_type': 'login',
-                'event_data': {'email': login.email}
-            })
+        if not user or not verify_password(login.password, user["password_hash"]):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password"
+            )
         
-        return token
+        # Create access token
+        access_token = create_access_token(user["user_id"], user["email"])
         
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
-        )
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": user["user_id"],
+                "email": user["email"],
+                "username": user["username"],
+                "first_name": user["first_name"],
+                "last_name": user["last_name"]
+            }
+        }
+        
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -90,12 +155,12 @@ async def logout_user():
     return {"message": "Logged out successfully"}
 
 @router.get("/me")
-async def get_current_user_info(current_user: Dict[str, Any] = None):
+async def get_current_user_info(current_user: Dict[str, Any] = Depends(get_current_user)):
     """Get current user information."""
-    # This would use the get_current_user dependency from main.py
     return {
-        "user_id": current_user['user_id'],
-        "email": current_user['email'],
-        "full_name": current_user['full_name'],
-        "is_active": current_user['is_active']
+        "id": current_user["user_id"],
+        "email": current_user["email"],
+        "username": current_user["username"],
+        "first_name": current_user["first_name"],
+        "last_name": current_user["last_name"]
     }

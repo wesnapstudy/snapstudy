@@ -38,31 +38,28 @@ security = HTTPBearer()
 
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Dependency to get current authenticated user."""
+    # Import here to avoid circular imports
+    from .routers.auth import verify_token, users_db
+    
     try:
         token = credentials.credentials
-        payload = await auth_service.verify_token(token)
+        payload = verify_token(token)
         user_id = payload.get('user_id')
         
-        if not user_id:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token"
-            )
-        
-        # Get user from database
-        user = await db_service.get_user_by_id(user_id)
-        if not user:
+        if not user_id or user_id not in users_db:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found"
             )
         
-        return user
+        return users_db[user_id]
         
-    except ValueError as e:
+    except HTTPException:
+        raise
+    except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(e)
+            detail="Invalid token"
         )
 
 # Include routers
