@@ -55,23 +55,14 @@ def create_snapstudy_architecture():
                 quizzes_table = DynamodbTable("Quizzes")
                 engagement_table = DynamodbTable("UserEngagement")
                 chat_table = DynamodbTable("ChatHistory")
-                video_content_table = DynamodbTable("VideoContent")
-                video_jobs_table = DynamodbTable("VideoJobs")
                 
         with Cluster("Storage Layer"):
             content_s3 = S3("Content Storage\n(Documents, Media)")
             
         with Cluster("AI/ML Services"):
             bedrock = Bedrock("Amazon Bedrock\n(Claude 3)")
-            nova_reel = Bedrock("Amazon Nova Reel\n(AI Video Generation)")
             textract = Textract("Amazon Textract\n(Document Processing)")
             transcribe = Transcribe("Amazon Transcribe\n(Audio/Video)")
-            
-        with Cluster("Video Processing"):
-            from diagrams.aws.media import MediaConvert
-            from diagrams.aws.ml import Rekognition
-            mediaconvert = MediaConvert("MediaConvert\n(Video Snippets)")
-            rekognition = Rekognition("Rekognition\n(Video Analysis)")
             
         with Cluster("Monitoring & Analytics"):
             cloudwatch = Cloudwatch("CloudWatch\n(Monitoring & Alarms)")
@@ -96,9 +87,7 @@ def create_snapstudy_architecture():
             micro_lessons_table,
             quizzes_table,
             engagement_table,
-            chat_table,
-            video_content_table,
-            video_jobs_table
+            chat_table
         ]
         
         # Storage operations
@@ -106,13 +95,8 @@ def create_snapstudy_architecture():
         
         # AI/ML operations
         lambda_api >> Edge(label="Chat & Quiz Generation") >> bedrock
-        lambda_api >> Edge(label="AI Video Generation") >> nova_reel
         lambda_api >> Edge(label="Document Processing") >> textract
         lambda_api >> Edge(label="Audio Processing") >> transcribe
-        
-        # Video processing operations
-        lambda_api >> Edge(label="Video Snippets") >> mediaconvert
-        lambda_api >> Edge(label="Video Analysis") >> rekognition
         
         # Monitoring
         lambda_api >> Edge(label="Metrics & Logs") >> cloudwatch
