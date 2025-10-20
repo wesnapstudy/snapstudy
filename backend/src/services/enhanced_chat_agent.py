@@ -567,15 +567,63 @@ class EnhancedAgenticChatAgent:
         context: Dict[str, Any],
         session_id: str
     ) -> Dict[str, Any]:
-        """Handle request using Bedrock AgentCore."""
+        """Handle request using TRUE Bedrock Agents for autonomous reasoning."""
         
-        # Use the original chat agent's AgentCore functionality
-        response = await self.base_chat_agent._execute_intent_based_response(
-            intent_analysis, context
-        )
+        try:
+            # Use actual Bedrock Agents instead of prompt-based reasoning
+            agent_context = {
+                **context,
+                'intent_analysis': intent_analysis,
+                'session_id': session_id,
+                'user_message': context.get('user_message', ''),
+                'autonomous_mode': True
+            }
+            
+            # Determine the appropriate goal based on intent
+            intent = intent_analysis.get('intent', EnhancedChatIntent.GENERAL_CHAT)
+            goal = self._map_intent_to_agent_goal(intent)
+            
+            # Invoke Bedrock Agent for autonomous reasoning
+            agent_response = await self.agent_core.reason_over_context(agent_context, goal)
+            
+            if agent_response.get('autonomous_decision'):
+                return {
+                    'response': agent_response.get('agent_response', 'I analyzed your request and here\'s my autonomous recommendation.'),
+                    'response_type': 'autonomous_agent_response',
+                    'source': ResponseSource.AGENT_CORE,
+                    'autonomous': True,
+                    'confidence': agent_response.get('confidence', 0.8),
+                    'reasoning': agent_response.get('reasoning', 'Autonomous decision by Bedrock Agent'),
+                    'recommendations': agent_response.get('recommendations', []),
+                    'session_id': agent_response.get('session_id', session_id),
+                    'agent_trace': agent_response.get('trace_data', [])
+                }
+            else:
+                # Fallback if agent is unavailable
+                return await self._handle_bedrock_request(intent_analysis, context, session_id)
+                
+        except Exception as e:
+            logger.error(f"Agent Core request failed: {e}")
+            # Fallback to Bedrock Claude
+            return await self._handle_bedrock_request(intent_analysis, context, session_id)
+    
+    def _map_intent_to_agent_goal(self, intent: EnhancedChatIntent) -> str:
+        """Map chat intent to agent goal for autonomous processing."""
+        intent_goal_mapping = {
+            EnhancedChatIntent.EXPLANATION: "provide_educational_explanation",
+            EnhancedChatIntent.SUMMARIZATION: "create_learning_summary", 
+            EnhancedChatIntent.QUIZ_REQUEST: "generate_assessment_quiz",
+            EnhancedChatIntent.PROGRESS_INQUIRY: "analyze_learning_progress",
+            EnhancedChatIntent.HELP_REQUEST: "provide_learning_assistance",
+            EnhancedChatIntent.RESEARCH_REQUEST: "conduct_educational_research",
+            EnhancedChatIntent.RESOURCE_SEARCH: "find_learning_resources",
+            EnhancedChatIntent.CODING_HELP: "provide_programming_assistance",
+            EnhancedChatIntent.ACADEMIC_ASSISTANCE: "provide_academic_support",
+            EnhancedChatIntent.STUDY_GUIDANCE: "create_study_plan",
+            EnhancedChatIntent.GENERAL_CHAT: "engage_educational_conversation"
+        }
         
-        response['source'] = ResponseSource.AGENT_CORE
-        return response
+        return intent_goal_mapping.get(intent, "provide_general_educational_assistance")
     
     async def _handle_bedrock_request(
         self,

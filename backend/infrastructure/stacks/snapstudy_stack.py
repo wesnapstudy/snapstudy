@@ -19,6 +19,7 @@ from aws_cdk import (
 )
 from constructs import Construct
 import os
+import json
 
 
 class SnapStudyStack(Stack):
@@ -44,6 +45,9 @@ class SnapStudyStack(Stack):
 
         # Create AWS WAF
         self.create_waf()
+
+        # Create Bedrock Agents
+        self.create_bedrock_agents()
 
         # Create CloudWatch Dashboard and Alarms
         self.create_monitoring()
@@ -668,6 +672,319 @@ class SnapStudyStack(Stack):
         )
 
         self.waf_acl = waf_acl
+
+    def create_bedrock_agents(self):
+        """Create Amazon Bedrock Agents for autonomous AI capabilities."""
+        
+        # Import Bedrock constructs
+        from aws_cdk import aws_bedrock as bedrock
+        
+        # Create IAM role for Bedrock Agent
+        agent_role = iam.Role(
+            self, "BedrockAgentRole",
+            assumed_by=iam.ServicePrincipal("bedrock.amazonaws.com"),
+            description="IAM role for SnapStudy Bedrock Agent"
+        )
+        
+        # Add permissions for the agent to access required services
+        agent_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "bedrock:InvokeModel",
+                    "bedrock:InvokeModelWithResponseStream"
+                ],
+                resources=[
+                    f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0",
+                    f"arn:aws:bedrock:{self.region}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0"
+                ]
+            )
+        )
+        
+        # Add DynamoDB permissions for agent memory and context
+        agent_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "dynamodb:GetItem",
+                    "dynamodb:PutItem",
+                    "dynamodb:UpdateItem",
+                    "dynamodb:Query",
+                    "dynamodb:Scan"
+                ],
+                resources=[
+                    self.users_table.table_arn,
+                    self.lessons_table.table_arn,
+                    self.micro_lessons_table.table_arn,
+                    self.user_engagement_table.table_arn,
+                    self.chat_history_table.table_arn,
+                    f"{self.users_table.table_arn}/index/*",
+                    f"{self.lessons_table.table_arn}/index/*"
+                ]
+            )
+        )
+        
+        # Add S3 permissions for content access
+        agent_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "s3:GetObject",
+                    "s3:PutObject",
+                    "s3:ListBucket"
+                ],
+                resources=[
+                    self.content_bucket.bucket_arn,
+                    f"{self.content_bucket.bucket_arn}/*"
+                ]
+            )
+        )
+        
+        # Create Knowledge Base for educational content
+        knowledge_base = bedrock.CfnKnowledgeBase(
+            self, "EducationalKnowledgeBase",
+            name="SnapStudy-Educational-KB",
+            description="Knowledge base containing educational content and learning materials",
+            role_arn=agent_role.role_arn,
+            knowledge_base_configuration=bedrock.CfnKnowledgeBase.KnowledgeBaseConfigurationProperty(
+                type="VECTOR",
+                vector_knowledge_base_configuration=bedrock.CfnKnowledgeBase.VectorKnowledgeBaseConfigurationProperty(
+                    embedding_model_arn=f"arn:aws:bedrock:{self.region}::foundation-model/amazon.titan-embed-text-v1"
+                )
+            ),
+            storage_configuration=bedrock.CfnKnowledgeBase.StorageConfigurationProperty(
+                type="OPENSEARCH_SERVERLESS",
+                opensearch_serverless_configuration=bedrock.CfnKnowledgeBase.OpenSearchServerlessConfigurationProperty(
+                    collection_arn=self._create_opensearch_collection(),
+                    vector_index_name="educational-content-index",
+                    field_mapping=bedrock.CfnKnowledgeBase.OpenSearchServerlessFieldMappingProperty(
+                        vector_field="vector",
+                        text_field="text",
+                        metadata_field="metadata"
+                    )
+                )
+            )
+        )
+        
+        # Create Data Source for the Knowledge Base
+        data_source = bedrock.CfnDataSource(
+            self, "EducationalDataSource",
+            knowledge_base_id=knowledge_base.attr_knowledge_base_id,
+            name="SnapStudy-Educational-Content",
+            description="Educational content from S3 bucket",
+            data_source_configuration=bedrock.CfnDataSource.DataSourceConfigurationProperty(
+                type="S3",
+                s3_configuration=bedrock.CfnDataSource.S3DataSourceConfigurationProperty(
+                    bucket_arn=self.content_bucket.bucket_arn,
+                    inclusion_prefixes=["educational/", "lessons/", "resources/"]
+                )
+            )
+        )
+        
+        # Create the main Learning Agent
+        learning_agent = bedrock.CfnAgent(
+            self, "SnapStudyLearningAgent",
+            agent_name="SnapStudy-Learning-Agent",
+            description="Autonomous AI agent for personalized learning and educational assistance",
+            foundation_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+            agent_resource_role_arn=agent_role.role_arn,
+            instruction="""You are an autonomous educational AI agent for SnapStudy, a personalized learning platform.
+
+Your core capabilities:
+1. AUTONOMOUS LEARNING ADAPTATION: Analyze student performance, engagement, and learning patterns to automatically adjust content difficulty, pacing, and teaching methods without human intervention.
+
+2. INTELLIGENT CONTENT GENERATION: Create personalized micro-lessons, quizzes, and explanations tailored to each student's learning style, current knowledge level, and progress.
+
+3. REAL-TIME DECISION MAKING: Make autonomous decisions about:
+   - When to advance to new topics vs. reinforce current concepts
+   - How to adapt content difficulty based on performance
+   - Which learning resources to recommend
+   - When to provide encouragement vs. challenge
+
+4. EDUCATIONAL EXPERTISE: Provide accurate, age-appropriate educational content across multiple subjects while maintaining academic integrity and safety.
+
+5. MEMORY AND CONTEXT: Remember student interactions, preferences, and learning patterns across sessions to provide consistent, personalized experiences.
+
+Always prioritize educational value, student safety, and learning outcomes in all decisions and responses.""",
+            idle_session_ttl_in_seconds=1800,  # 30 minutes
+            auto_prepare=True,
+            knowledge_bases=[
+                bedrock.CfnAgent.AgentKnowledgeBaseProperty(
+                    knowledge_base_id=knowledge_base.attr_knowledge_base_id,
+                    description="Educational content and learning materials",
+                    knowledge_base_state="ENABLED"
+                )
+            ]
+        )
+        
+        # Create Action Groups for the agent
+        self._create_agent_action_groups(learning_agent)
+        
+        # Create Agent Alias for production use
+        agent_alias = bedrock.CfnAgentAlias(
+            self, "LearningAgentAlias",
+            agent_id=learning_agent.attr_agent_id,
+            agent_alias_name="PRODUCTION",
+            description="Production alias for SnapStudy Learning Agent"
+        )
+        
+        # Create Adaptive Learning Agent (specialized for content adaptation)
+        adaptive_agent = bedrock.CfnAgent(
+            self, "SnapStudyAdaptiveAgent",
+            agent_name="SnapStudy-Adaptive-Agent",
+            description="Specialized agent for autonomous learning path adaptation and content personalization",
+            foundation_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+            agent_resource_role_arn=agent_role.role_arn,
+            instruction="""You are the Adaptive Learning Agent for SnapStudy, specialized in autonomous learning path optimization.
+
+Your primary functions:
+1. PERFORMANCE ANALYSIS: Continuously analyze student quiz scores, engagement metrics, time spent, and learning patterns to identify strengths, weaknesses, and optimal learning conditions.
+
+2. AUTONOMOUS ADAPTATION: Make real-time decisions about learning path modifications:
+   - ADVANCE: Move to next topic when mastery is demonstrated (>85% accuracy, good engagement)
+   - REVIEW: Revisit previous concepts when gaps are detected
+   - REINFORCE: Provide additional practice for partially understood concepts
+   - SIMPLIFY: Break down complex topics when student struggles
+   - ACCELERATE: Increase pace for high-performing students
+   - COMPLETE: Mark learning objectives as achieved
+
+3. CONTENT PERSONALIZATION: Automatically adjust:
+   - Difficulty level and complexity
+   - Explanation style (visual, auditory, kinesthetic)
+   - Example types and contexts
+   - Practice problem difficulty
+
+4. PREDICTIVE LEARNING: Anticipate learning challenges and proactively adjust content before students encounter difficulties.
+
+Make all decisions autonomously based on data analysis. Always explain your reasoning for transparency.""",
+            idle_session_ttl_in_seconds=1800,
+            auto_prepare=True
+        )
+        
+        # Create alias for adaptive agent
+        adaptive_alias = bedrock.CfnAgentAlias(
+            self, "AdaptiveAgentAlias",
+            agent_id=adaptive_agent.attr_agent_id,
+            agent_alias_name="PRODUCTION",
+            description="Production alias for SnapStudy Adaptive Agent"
+        )
+        
+        # Store agent references
+        self.learning_agent = learning_agent
+        self.adaptive_agent = adaptive_agent
+        self.knowledge_base = knowledge_base
+        self.agent_role = agent_role
+        
+        # Output agent information
+        CfnOutput(
+            self, "LearningAgentId",
+            value=learning_agent.attr_agent_id,
+            description="SnapStudy Learning Agent ID",
+            export_name="SnapStudy-LearningAgentId"
+        )
+        
+        CfnOutput(
+            self, "AdaptiveAgentId", 
+            value=adaptive_agent.attr_agent_id,
+            description="SnapStudy Adaptive Agent ID",
+            export_name="SnapStudy-AdaptiveAgentId"
+        )
+        
+        CfnOutput(
+            self, "KnowledgeBaseId",
+            value=knowledge_base.attr_knowledge_base_id,
+            description="Educational Knowledge Base ID",
+            export_name="SnapStudy-KnowledgeBaseId"
+        )
+
+    def _create_opensearch_collection(self) -> str:
+        """Create OpenSearch Serverless collection for vector storage."""
+        from aws_cdk import aws_opensearchserverless as opensearch
+        
+        # Create security policy for the collection
+        security_policy = opensearch.CfnSecurityPolicy(
+            self, "KnowledgeBaseSecurityPolicy",
+            name="snapstudy-kb-security-policy",
+            type="encryption",
+            policy=json.dumps({
+                "Rules": [
+                    {
+                        "ResourceType": "collection",
+                        "Resource": ["collection/snapstudy-educational-kb"]
+                    }
+                ],
+                "AWSOwnedKey": True
+            })
+        )
+        
+        # Create network policy
+        network_policy = opensearch.CfnSecurityPolicy(
+            self, "KnowledgeBaseNetworkPolicy", 
+            name="snapstudy-kb-network-policy",
+            type="network",
+            policy=json.dumps([
+                {
+                    "Rules": [
+                        {
+                            "ResourceType": "collection",
+                            "Resource": ["collection/snapstudy-educational-kb"]
+                        },
+                        {
+                            "ResourceType": "dashboard",
+                            "Resource": ["collection/snapstudy-educational-kb"]
+                        }
+                    ],
+                    "AllowFromPublic": True
+                }
+            ])
+        )
+        
+        # Create the collection
+        collection = opensearch.CfnCollection(
+            self, "EducationalKnowledgeBaseCollection",
+            name="snapstudy-educational-kb",
+            description="Vector storage for SnapStudy educational content",
+            type="VECTORSEARCH"
+        )
+        
+        collection.add_dependency(security_policy)
+        collection.add_dependency(network_policy)
+        
+        return collection.attr_arn
+
+    def _create_agent_action_groups(self, agent):
+        """Create action groups for the Bedrock Agent."""
+        
+        # Create Lambda function for agent actions
+        agent_actions_lambda = lambda_.Function(
+            self, "AgentActionsFunction",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="agent_actions.handler",
+            code=lambda_.Code.from_asset("../src/agent_actions"),
+            timeout=Duration.seconds(60),
+            memory_size=512,
+            environment={
+                "USERS_TABLE": self.users_table.table_name,
+                "LESSONS_TABLE": self.lessons_table.table_name,
+                "MICRO_LESSONS_TABLE": self.micro_lessons_table.table_name,
+                "USER_ENGAGEMENT_TABLE": self.user_engagement_table.table_name,
+                "CONTENT_BUCKET": self.content_bucket.bucket_name
+            }
+        )
+        
+        # Grant permissions to the Lambda
+        self.users_table.grant_read_write_data(agent_actions_lambda)
+        self.lessons_table.grant_read_write_data(agent_actions_lambda)
+        self.micro_lessons_table.grant_read_write_data(agent_actions_lambda)
+        self.user_engagement_table.grant_read_write_data(agent_actions_lambda)
+        self.content_bucket.grant_read_write(agent_actions_lambda)
+        
+        # Allow Bedrock Agent to invoke the Lambda
+        agent_actions_lambda.add_permission(
+            "AllowBedrockAgent",
+            principal=iam.ServicePrincipal("bedrock.amazonaws.com"),
+            action="lambda:InvokeFunction"
+        )
 
     def create_monitoring(self):
         """Create CloudWatch Dashboard and Alarms for monitoring."""

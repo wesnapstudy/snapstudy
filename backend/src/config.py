@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     q_business_index_id: Optional[str] = os.getenv("Q_BUSINESS_INDEX_ID")
     q_developer_enabled: bool = os.getenv("Q_DEVELOPER_ENABLED", "false").lower() == "true"
     
+    # Bedrock Agents Configuration (True Autonomous AI)
+    learning_agent_id: Optional[str] = os.getenv("LEARNING_AGENT_ID")
+    adaptive_agent_id: Optional[str] = os.getenv("ADAPTIVE_AGENT_ID")
+    knowledge_base_id: Optional[str] = os.getenv("KNOWLEDGE_BASE_ID")
+    
     # Bedrock Guardrails Configuration
     bedrock_guardrail_id: Optional[str] = os.getenv("BEDROCK_GUARDRAIL_ID")
     bedrock_guardrail_version: str = os.getenv("BEDROCK_GUARDRAIL_VERSION", "DRAFT")

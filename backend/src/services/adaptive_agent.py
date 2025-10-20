@@ -45,58 +45,279 @@ class LearningState(str, Enum):
 
 class BedrockAgentCore:
     """
-    Amazon Bedrock AgentCore primitives integration for autonomous reasoning.
-    This provides the core agent capabilities: reasoning, planning, memory, and function invocation.
+    Amazon Bedrock Agents integration for TRUE autonomous reasoning and decision-making.
+    
+    This class provides direct integration with Bedrock Agents, eliminating prompt-based
+    reasoning in favor of native agent capabilities for autonomous learning adaptation.
     """
     
     def __init__(self):
         self.bedrock_agent_client = boto3.client('bedrock-agent-runtime', region_name=settings.aws_region)
         self.bedrock_client = boto3.client('bedrock-runtime', region_name=settings.aws_region)
         
-        # Agent configuration
-        self.agent_id = settings.bedrock_agent_id if hasattr(settings, 'bedrock_agent_id') else None
-        self.agent_alias_id = settings.bedrock_agent_alias_id if hasattr(settings, 'bedrock_agent_alias_id') else 'TSTALIASID'
+        # Agent configuration - these will be set from infrastructure outputs
+        self.learning_agent_id = getattr(settings, 'learning_agent_id', None)
+        self.adaptive_agent_id = getattr(settings, 'adaptive_agent_id', None)
+        self.agent_alias_id = getattr(settings, 'bedrock_agent_alias_id', 'PRODUCTION')
+        self.knowledge_base_id = getattr(settings, 'knowledge_base_id', None)
         
-        # Memory store for agent state
-        self.memory_store = {}
+        # Session management for agent conversations
+        self.active_sessions = {}
+        
+        logger.info(f"BedrockAgentCore initialized with Learning Agent: {self.learning_agent_id}, Adaptive Agent: {self.adaptive_agent_id}")
         
     async def reason_over_context(self, context: Dict[str, Any], goal: str) -> Dict[str, Any]:
         """
-        Use Bedrock Agent reasoning capabilities to analyze context and make decisions.
-        This is the core autonomous reasoning function.
+        Use TRUE Bedrock Agent autonomous reasoning to analyze context and make decisions.
+        
+        This method invokes actual Bedrock Agents instead of using prompt-based reasoning,
+        providing genuine autonomous AI capabilities.
         """
         try:
-            # Prepare reasoning prompt with structured context
-            reasoning_prompt = self._create_reasoning_prompt(context, goal)
+            if not self.learning_agent_id:
+                raise ValueError("Bedrock Learning Agent not configured. Deploy infrastructure first.")
             
-            if self.agent_id:
-                # Use Bedrock Agent if configured
-                response = await self._invoke_bedrock_agent(reasoning_prompt, context)
-            else:
-                # Fallback to direct Claude invocation with agent-like reasoning
-                response = await self._invoke_claude_reasoning(reasoning_prompt, context)
+            # Prepare context for agent invocation
+            agent_input = self._prepare_agent_context(context, goal)
             
-            return response
+            # Invoke the Learning Agent for autonomous reasoning
+            response = await self._invoke_learning_agent(agent_input, context.get('session_id'))
+            
+            # Process agent response
+            processed_response = self._process_agent_response(response, goal)
+            
+            logger.info(f"Autonomous reasoning completed by Bedrock Agent: {goal}")
+            return processed_response
             
         except Exception as e:
-            logging.error(f"AgentCore reasoning failed: {e}")
-            return self._fallback_reasoning(context, goal)
+            logger.error(f"Bedrock Agent reasoning failed: {e}")
+            # Only fallback if agent is truly unavailable
+            return await self._agent_fallback_reasoning(context, goal, str(e))
     
-    async def plan_learning_sequence(self, context: Dict[str, Any], objective: str) -> List[Dict[str, Any]]:
+    async def _invoke_learning_agent(self, agent_input: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Use AgentCore planning capabilities to create multi-step learning sequences.
+        Invoke the Bedrock Learning Agent for autonomous reasoning and decision-making.
         """
         try:
-            planning_prompt = f"""
-            Plan a learning sequence to achieve: {objective}
+            # Prepare agent invocation parameters
+            invoke_params = {
+                'agentId': self.learning_agent_id,
+                'agentAliasId': self.agent_alias_id,
+                'inputText': agent_input
+            }
             
-            Context: {json.dumps(context, indent=2)}
+            # Add session ID if provided for conversation continuity
+            if session_id:
+                invoke_params['sessionId'] = session_id
+                self.active_sessions[session_id] = {
+                    'agent_id': self.learning_agent_id,
+                    'last_interaction': datetime.now(timezone.utc).isoformat()
+                }
             
-            Create a step-by-step plan with:
-            1. Learning objectives for each step
-            2. Content difficulty progression
-            3. Assessment checkpoints
-            4. Adaptation triggers
+            # Invoke the agent
+            response = self.bedrock_agent_client.invoke_agent(**invoke_params)
+            
+            # Process streaming response
+            agent_response = self._process_agent_stream(response)
+            
+            return agent_response
+            
+        except Exception as e:
+            logger.error(f"Error invoking Learning Agent: {e}")
+            raise
+    
+    async def _invoke_adaptive_agent(self, agent_input: str, session_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Invoke the Bedrock Adaptive Agent for learning path optimization.
+        """
+        try:
+            if not self.adaptive_agent_id:
+                raise ValueError("Adaptive Agent not configured")
+            
+            invoke_params = {
+                'agentId': self.adaptive_agent_id,
+                'agentAliasId': self.agent_alias_id,
+                'inputText': agent_input
+            }
+            
+            if session_id:
+                invoke_params['sessionId'] = session_id
+            
+            response = self.bedrock_agent_client.invoke_agent(**invoke_params)
+            return self._process_agent_stream(response)
+            
+        except Exception as e:
+            logger.error(f"Error invoking Adaptive Agent: {e}")
+            raise
+    
+    def _process_agent_stream(self, response) -> Dict[str, Any]:
+        """
+        Process the streaming response from Bedrock Agent.
+        """
+        try:
+            # Extract response from event stream
+            event_stream = response['completion']
+            agent_response = ""
+            trace_data = []
+            
+            for event in event_stream:
+                if 'chunk' in event:
+                    chunk = event['chunk']
+                    if 'bytes' in chunk:
+                        agent_response += chunk['bytes'].decode('utf-8')
+                elif 'trace' in event:
+                    trace_data.append(event['trace'])
+            
+            return {
+                'response': agent_response,
+                'trace': trace_data,
+                'session_id': response.get('sessionId'),
+                'autonomous_decision': True,
+                'agent_used': True
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing agent stream: {e}")
+            return {
+                'response': "Agent processing error",
+                'error': str(e),
+                'autonomous_decision': False
+            }
+    
+    def _prepare_agent_context(self, context: Dict[str, Any], goal: str) -> str:
+        """
+        Prepare context for Bedrock Agent invocation.
+        """
+        # Structure the context for agent understanding
+        agent_context = {
+            'goal': goal,
+            'user_context': context,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'autonomous_mode': True
+        }
+        
+        # Create natural language input for the agent
+        agent_input = f"""
+        AUTONOMOUS LEARNING TASK: {goal}
+        
+        STUDENT CONTEXT:
+        - User ID: {context.get('user_id', 'unknown')}
+        - Current Lesson: {context.get('current_lesson', {}).get('title', 'None')}
+        - Performance Data: {json.dumps(context.get('performance_data', {}), indent=2)}
+        - Learning Profile: {json.dumps(context.get('user_profile', {}), indent=2)}
+        
+        TASK REQUIREMENTS:
+        Make autonomous decisions based on the provided context. Analyze the student's learning state and provide specific, actionable recommendations for their educational journey.
+        
+        EXPECTED OUTPUT:
+        Provide a structured response with:
+        1. Analysis of current learning state
+        2. Autonomous decision/recommendation
+        3. Reasoning for the decision
+        4. Confidence level (0.0-1.0)
+        5. Next steps or actions to take
+        """
+        
+        return agent_input
+    
+    def _process_agent_response(self, agent_response: Dict[str, Any], goal: str) -> Dict[str, Any]:
+        """
+        Process and structure the agent's response for application use.
+        """
+        try:
+            response_text = agent_response.get('response', '')
+            
+            # Parse structured response from agent
+            # In a production system, you might use more sophisticated parsing
+            processed_response = {
+                'goal': goal,
+                'agent_response': response_text,
+                'autonomous_decision': True,
+                'confidence': self._extract_confidence_from_response(response_text),
+                'reasoning': self._extract_reasoning_from_response(response_text),
+                'recommendations': self._extract_recommendations_from_response(response_text),
+                'session_id': agent_response.get('session_id'),
+                'trace_data': agent_response.get('trace', []),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+            
+            return processed_response
+            
+        except Exception as e:
+            logger.error(f"Error processing agent response: {e}")
+            return {
+                'goal': goal,
+                'error': str(e),
+                'autonomous_decision': False,
+                'fallback_used': True
+            }
+    
+    async def _agent_fallback_reasoning(self, context: Dict[str, Any], goal: str, error: str) -> Dict[str, Any]:
+        """
+        Fallback reasoning when Bedrock Agents are unavailable.
+        This should only be used when agents are truly inaccessible.
+        """
+        logger.warning(f"Using fallback reasoning due to agent error: {error}")
+        
+        return {
+            'goal': goal,
+            'autonomous_decision': False,
+            'fallback_used': True,
+            'error': error,
+            'reasoning': 'Bedrock Agents unavailable, using basic fallback logic',
+            'confidence': 0.3,
+            'recommendations': ['Check agent configuration', 'Verify agent deployment'],
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+
+    async def plan_learning_sequence(self, context: Dict[str, Any], objective: str) -> List[Dict[str, Any]]:
+        """
+        Use Bedrock Agent autonomous planning to create multi-step learning sequences.
+        """
+        try:
+            if not self.adaptive_agent_id:
+                logger.warning("Adaptive Agent not available, using Learning Agent for planning")
+                agent_id = self.learning_agent_id
+            else:
+                agent_id = self.adaptive_agent_id
+            
+            # Prepare planning context for agent
+            planning_context = {
+                **context,
+                'planning_objective': objective,
+                'task_type': 'learning_sequence_planning'
+            }
+            
+            planning_input = f"""
+            AUTONOMOUS LEARNING SEQUENCE PLANNING
+            
+            OBJECTIVE: {objective}
+            
+            STUDENT CONTEXT: {json.dumps(context, indent=2)}
+            
+            TASK: Create a personalized, multi-step learning sequence that will help this student achieve the objective. 
+            
+            REQUIREMENTS:
+            1. Analyze the student's current knowledge level and learning style
+            2. Break down the objective into logical learning steps
+            3. Determine appropriate difficulty progression
+            4. Include assessment checkpoints
+            5. Specify adaptation triggers for each step
+            
+            OUTPUT FORMAT:
+            Provide a structured learning sequence with specific steps, objectives, and success criteria.
+            """
+            
+            # Invoke appropriate agent for planning
+            if agent_id == self.adaptive_agent_id:
+                response = await self._invoke_adaptive_agent(planning_input, context.get('session_id'))
+            else:
+                response = await self._invoke_learning_agent(planning_input, context.get('session_id'))
+            
+            # Parse the learning sequence from agent response
+            learning_sequence = self._parse_learning_sequence(response, objective)
+            
+            return learning_sequence
             
             Return as JSON array of steps.
             """
@@ -1419,4 +1640,352 @@ class AdaptiveLearningAgent:
 
 
 # Global service instance
-adaptive_agent = AdaptiveLearningAgent()
+adaptive_agent = AdaptiveLearningAgent()     
+   except Exception as e:
+            logger.error(f"Error planning learning sequence: {e}")
+            return self._fallback_learning_sequence(objective, context)
+    
+    def _extract_confidence_from_response(self, response_text: str) -> float:
+        """Extract confidence score from agent response."""
+        # Simple pattern matching - in production, use more sophisticated parsing
+        import re
+        confidence_match = re.search(r'confidence[:\s]+([0-9.]+)', response_text.lower())
+        if confidence_match:
+            try:
+                return float(confidence_match.group(1))
+            except ValueError:
+                pass
+        return 0.8  # Default confidence
+    
+    def _extract_reasoning_from_response(self, response_text: str) -> str:
+        """Extract reasoning from agent response."""
+        # Look for reasoning sections in the response
+        lines = response_text.split('\n')
+        reasoning_lines = []
+        in_reasoning_section = False
+        
+        for line in lines:
+            if 'reasoning' in line.lower() or 'analysis' in line.lower():
+                in_reasoning_section = True
+                continue
+            elif in_reasoning_section and line.strip():
+                if line.startswith(('1.', '2.', '3.', '-', '*')):
+                    reasoning_lines.append(line.strip())
+                elif not line[0].isdigit() and len(reasoning_lines) > 0:
+                    break
+        
+        return ' '.join(reasoning_lines) if reasoning_lines else "Autonomous decision based on learning analysis"
+    
+    def _extract_recommendations_from_response(self, response_text: str) -> List[str]:
+        """Extract recommendations from agent response."""
+        lines = response_text.split('\n')
+        recommendations = []
+        in_recommendations_section = False
+        
+        for line in lines:
+            if 'recommendation' in line.lower() or 'next step' in line.lower():
+                in_recommendations_section = True
+                continue
+            elif in_recommendations_section and line.strip():
+                if line.startswith(('1.', '2.', '3.', '-', '*')):
+                    recommendations.append(line.strip())
+        
+        return recommendations if recommendations else ["Continue with current learning path"]
+    
+    def _parse_learning_sequence(self, agent_response: Dict[str, Any], objective: str) -> List[Dict[str, Any]]:
+        """Parse learning sequence from agent response."""
+        try:
+            response_text = agent_response.get('response', '')
+            
+            # Simple parsing - in production, use structured output from agent
+            sequence_steps = []
+            lines = response_text.split('\n')
+            
+            current_step = {}
+            step_counter = 1
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                if line.startswith(('Step', 'step', f'{step_counter}.')):
+                    if current_step:
+                        sequence_steps.append(current_step)
+                    current_step = {
+                        'step_number': step_counter,
+                        'title': line,
+                        'objective': objective,
+                        'autonomous_generated': True
+                    }
+                    step_counter += 1
+                elif current_step and ':' in line:
+                    key, value = line.split(':', 1)
+                    current_step[key.lower().strip()] = value.strip()
+            
+            if current_step:
+                sequence_steps.append(current_step)
+            
+            # Ensure we have at least a basic sequence
+            if not sequence_steps:
+                sequence_steps = self._create_default_sequence(objective)
+            
+            return sequence_steps
+            
+        except Exception as e:
+            logger.error(f"Error parsing learning sequence: {e}")
+            return self._create_default_sequence(objective)
+    
+    def _create_default_sequence(self, objective: str) -> List[Dict[str, Any]]:
+        """Create a default learning sequence when agent parsing fails."""
+        return [
+            {
+                'step_number': 1,
+                'title': f'Introduction to {objective}',
+                'objective': f'Understand basic concepts of {objective}',
+                'autonomous_generated': False,
+                'fallback': True
+            },
+            {
+                'step_number': 2,
+                'title': f'Practice {objective}',
+                'objective': f'Apply knowledge of {objective}',
+                'autonomous_generated': False,
+                'fallback': True
+            },
+            {
+                'step_number': 3,
+                'title': f'Master {objective}',
+                'objective': f'Demonstrate proficiency in {objective}',
+                'autonomous_generated': False,
+                'fallback': True
+            }
+        ]
+    
+    def _fallback_learning_sequence(self, objective: str, context: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Fallback learning sequence when agents are unavailable."""
+        logger.warning("Using fallback learning sequence - Bedrock Agents unavailable")
+        return self._create_default_sequence(objective)
+
+    async def autonomous_adapt_learning_path(
+        self, 
+        user_id: str, 
+        performance_data: Dict[str, Any], 
+        learning_context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Use Bedrock Agents to autonomously adapt the learning path based on performance.
+        
+        This is the core autonomous adaptation function that makes real-time decisions
+        about learning progression without human intervention.
+        """
+        try:
+            if not self.adaptive_agent_id:
+                logger.warning("Adaptive Agent not configured, using Learning Agent")
+                agent_id = self.learning_agent_id
+            else:
+                agent_id = self.adaptive_agent_id
+            
+            # Prepare adaptation context
+            adaptation_input = f"""
+            AUTONOMOUS LEARNING PATH ADAPTATION
+            
+            USER ID: {user_id}
+            
+            PERFORMANCE DATA: {json.dumps(performance_data, indent=2)}
+            
+            LEARNING CONTEXT: {json.dumps(learning_context, indent=2)}
+            
+            TASK: Analyze the student's performance and learning context to make an autonomous decision about how to adapt their learning path.
+            
+            ADAPTATION OPTIONS:
+            - ADVANCE: Move to next topic/difficulty level
+            - REVIEW: Revisit previous concepts
+            - REINFORCE: Provide additional practice
+            - SIMPLIFY: Reduce complexity/difficulty
+            - ACCELERATE: Increase learning pace
+            - ENGAGE: Modify approach to increase engagement
+            
+            REQUIREMENTS:
+            1. Analyze performance metrics (scores, completion rates, engagement)
+            2. Consider learning context and student profile
+            3. Make autonomous adaptation decision
+            4. Provide specific implementation steps
+            5. Include confidence level and reasoning
+            
+            Make the decision autonomously based on the data provided.
+            """
+            
+            # Invoke the appropriate agent
+            if agent_id == self.adaptive_agent_id:
+                response = await self._invoke_adaptive_agent(adaptation_input)
+            else:
+                response = await self._invoke_learning_agent(adaptation_input)
+            
+            # Process adaptation decision
+            adaptation_result = self._process_adaptation_response(response, user_id, performance_data)
+            
+            logger.info(f"Autonomous adaptation completed for user {user_id}: {adaptation_result.get('decision')}")
+            return adaptation_result
+            
+        except Exception as e:
+            logger.error(f"Error in autonomous adaptation: {e}")
+            return self._fallback_adaptation_decision(user_id, performance_data, str(e))
+    
+    def _process_adaptation_response(self, agent_response: Dict[str, Any], user_id: str, performance_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process the agent's adaptation decision."""
+        try:
+            response_text = agent_response.get('response', '')
+            
+            # Extract adaptation decision
+            adaptation_decision = self._extract_adaptation_decision(response_text)
+            confidence = self._extract_confidence_from_response(response_text)
+            reasoning = self._extract_reasoning_from_response(response_text)
+            
+            return {
+                'user_id': user_id,
+                'decision': adaptation_decision,
+                'confidence': confidence,
+                'reasoning': reasoning,
+                'autonomous': True,
+                'agent_used': True,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'performance_data': performance_data,
+                'session_id': agent_response.get('session_id')
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing adaptation response: {e}")
+            return self._fallback_adaptation_decision(user_id, performance_data, str(e))
+    
+    def _extract_adaptation_decision(self, response_text: str) -> str:
+        """Extract the adaptation decision from agent response."""
+        response_lower = response_text.lower()
+        
+        # Look for adaptation keywords
+        adaptation_keywords = {
+            'advance': ['advance', 'move forward', 'next level', 'progress'],
+            'review': ['review', 'revisit', 'go back', 'previous'],
+            'reinforce': ['reinforce', 'practice more', 'additional practice'],
+            'simplify': ['simplify', 'easier', 'reduce complexity', 'break down'],
+            'accelerate': ['accelerate', 'faster', 'increase pace', 'speed up'],
+            'engage': ['engage', 'motivation', 'interest', 'engagement']
+        }
+        
+        for decision, keywords in adaptation_keywords.items():
+            if any(keyword in response_lower for keyword in keywords):
+                return decision
+        
+        return 'continue'  # Default decision
+    
+    def _fallback_adaptation_decision(self, user_id: str, performance_data: Dict[str, Any], error: str) -> Dict[str, Any]:
+        """Fallback adaptation decision when agents are unavailable."""
+        # Simple rule-based fallback
+        avg_score = performance_data.get('average_score', 0.7)
+        
+        if avg_score >= 0.85:
+            decision = 'advance'
+        elif avg_score < 0.6:
+            decision = 'simplify'
+        elif avg_score < 0.75:
+            decision = 'reinforce'
+        else:
+            decision = 'continue'
+        
+        return {
+            'user_id': user_id,
+            'decision': decision,
+            'confidence': 0.6,
+            'reasoning': f'Fallback decision based on average score: {avg_score}',
+            'autonomous': False,
+            'agent_used': False,
+            'fallback_used': True,
+            'error': error,
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
+
+    async def get_autonomous_recommendation(
+        self, 
+        user_id: str, 
+        current_context: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Get autonomous recommendation for next learning action using Bedrock Agents.
+        """
+        try:
+            recommendation_input = f"""
+            AUTONOMOUS LEARNING RECOMMENDATION
+            
+            USER ID: {user_id}
+            CURRENT CONTEXT: {json.dumps(current_context, indent=2)}
+            
+            TASK: Provide an autonomous recommendation for the student's next learning action.
+            
+            ANALYZE:
+            1. Current learning state and progress
+            2. Performance patterns and trends
+            3. Engagement levels and learning preferences
+            4. Knowledge gaps and strengths
+            
+            RECOMMEND:
+            - Specific next action to take
+            - Reasoning for the recommendation
+            - Expected learning outcome
+            - Success metrics to track
+            
+            Make the recommendation autonomously based on comprehensive analysis.
+            """
+            
+            response = await self._invoke_learning_agent(recommendation_input)
+            
+            recommendation = {
+                'user_id': user_id,
+                'recommendation': self._extract_recommendations_from_response(response.get('response', '')),
+                'reasoning': self._extract_reasoning_from_response(response.get('response', '')),
+                'confidence': self._extract_confidence_from_response(response.get('response', '')),
+                'autonomous': True,
+                'agent_used': True,
+                'timestamp': datetime.now(timezone.utc).isoformat(),
+                'session_id': response.get('session_id')
+            }
+            
+            return recommendation
+            
+        except Exception as e:
+            logger.error(f"Error getting autonomous recommendation: {e}")
+            return {
+                'user_id': user_id,
+                'recommendation': ['Continue with current learning path'],
+                'reasoning': 'Fallback recommendation due to agent unavailability',
+                'confidence': 0.5,
+                'autonomous': False,
+                'error': str(e),
+                'timestamp': datetime.now(timezone.utc).isoformat()
+            }
+
+    def get_agent_health_status(self) -> Dict[str, Any]:
+        """Check the health status of Bedrock Agents."""
+        return {
+            'learning_agent': {
+                'configured': bool(self.learning_agent_id),
+                'agent_id': self.learning_agent_id,
+                'available': bool(self.learning_agent_id)
+            },
+            'adaptive_agent': {
+                'configured': bool(self.adaptive_agent_id),
+                'agent_id': self.adaptive_agent_id,
+                'available': bool(self.adaptive_agent_id)
+            },
+            'knowledge_base': {
+                'configured': bool(self.knowledge_base_id),
+                'kb_id': self.knowledge_base_id,
+                'available': bool(self.knowledge_base_id)
+            },
+            'autonomous_capabilities': {
+                'reasoning': bool(self.learning_agent_id),
+                'adaptation': bool(self.adaptive_agent_id or self.learning_agent_id),
+                'planning': bool(self.adaptive_agent_id or self.learning_agent_id),
+                'recommendations': bool(self.learning_agent_id)
+            },
+            'timestamp': datetime.now(timezone.utc).isoformat()
+        }
