@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import './LoginForm.css';
 
 interface LoginFormProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -8,13 +7,10 @@ interface LoginFormProps {
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister }) => {
   const [isLogin, setIsLogin] = useState(true);
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    username: '',
-    first_name: '',
-    last_name: ''
-  });
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,108 +21,81 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister }) => {
 
     try {
       if (isLogin) {
-        await onLogin(formData.email, formData.password);
+        await onLogin(email, password);
       } else {
-        await onRegister(formData);
+        await onRegister({
+          email,
+          password,
+          first_name: firstName,
+          last_name: lastName
+        });
       }
-    } catch (error: any) {
-      setError(error.response?.data?.detail || 'Authentication failed');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
   return (
     <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>SnapStudy</h1>
-          <p>Your autonomous learning companion</p>
-        </div>
-
-        <div className="login-tabs">
-          <button 
-            className={isLogin ? 'active' : ''}
-            onClick={() => setIsLogin(true)}
-          >
-            Sign In
-          </button>
-          <button 
-            className={!isLogin ? 'active' : ''}
-            onClick={() => setIsLogin(false)}
-          >
-            Sign Up
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="login-form">
-          {error && <div className="error-message">{error}</div>}
-          
-          <div className="form-group">
-            <input
-              type="email"
-              name="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <input
-              type="password"
-              name="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
+      <div className="login-form">
+        <h1>SnapStudy</h1>
+        <h2>{isLogin ? 'Sign In' : 'Sign Up'}</h2>
+        
+        {error && <div className="error-message">{error}</div>}
+        
+        <form onSubmit={handleSubmit}>
           {!isLogin && (
             <>
-              <div className="form-group">
-                <input
-                  type="text"
-                  name="username"
-                  placeholder="Username (optional)"
-                  value={formData.username}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="form-group">
-                <input
-                  type="text"
-                  name="first_name"
-                  placeholder="First Name"
-                  value={formData.first_name}
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="form-group">
-                <input
-                  type="text"
-                  name="last_name"
-                  placeholder="Last Name"
-                  value={formData.last_name}
-                  onChange={handleChange}
-                />
-              </div>
+              <input
+                type="text"
+                placeholder="First Name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+              <input
+                type="text"
+                placeholder="Last Name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
             </>
           )}
-
-          <button type="submit" disabled={loading} className="submit-button">
-            {loading ? 'Please wait...' : (isLogin ? 'Sign In' : 'Sign Up')}
+          
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          
+          <button type="submit" disabled={loading}>
+            {loading ? 'Loading...' : (isLogin ? 'Sign In' : 'Sign Up')}
           </button>
         </form>
+        
+        <p>
+          {isLogin ? "Don't have an account? " : "Already have an account? "}
+          <button 
+            type="button" 
+            onClick={() => setIsLogin(!isLogin)}
+            className="link-button"
+          >
+            {isLogin ? 'Sign Up' : 'Sign In'}
+          </button>
+        </p>
       </div>
     </div>
   );

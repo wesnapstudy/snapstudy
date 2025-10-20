@@ -1,57 +1,69 @@
 import api from './api';
 import { User } from '../types';
 
-interface LoginRequest {
+interface LoginCredentials {
   email: string;
   password: string;
 }
 
-interface RegisterRequest {
+interface RegisterData {
   email: string;
   password: string;
-  username?: string;
-  first_name?: string;
-  last_name?: string;
+  first_name: string;
+  last_name: string;
 }
 
 interface AuthResponse {
-  access_token: string;
-  token_type: string;
   user: User;
+  token: string;
 }
 
 class AuthService {
-  async login(credentials: LoginRequest): Promise<AuthResponse> {
-    const response = await api.post('/api/v1/auth/login', credentials);
-    const { access_token, user } = response.data;
-    
-    localStorage.setItem('auth_token', access_token);
-    return response.data;
+  private tokenKey = 'auth_token';
+
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    try {
+      const response = await api.post('/api/v1/auth/login', credentials);
+      const { user, token } = response.data;
+      
+      localStorage.setItem(this.tokenKey, token);
+      return { user, token };
+    } catch (error) {
+      throw new Error('Login failed');
+    }
   }
 
-  async register(userData: RegisterRequest): Promise<AuthResponse> {
-    const response = await api.post('/api/v1/auth/register', userData);
-    const { access_token, user } = response.data;
-    
-    localStorage.setItem('auth_token', access_token);
-    return response.data;
+  async register(userData: RegisterData): Promise<AuthResponse> {
+    try {
+      const response = await api.post('/api/v1/auth/register', userData);
+      const { user, token } = response.data;
+      
+      localStorage.setItem(this.tokenKey, token);
+      return { user, token };
+    } catch (error) {
+      throw new Error('Registration failed');
+    }
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await api.get('/api/v1/auth/me');
-    return response.data;
-  }
-
-  logout(): void {
-    localStorage.removeItem('auth_token');
+    try {
+      const response = await api.get('/api/v1/users/me');
+      return response.data;
+    } catch (error) {
+      throw new Error('Failed to get current user');
+    }
   }
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('auth_token');
+    return !!localStorage.getItem(this.tokenKey);
+  }
+
+  logout(): void {
+    localStorage.removeItem(this.tokenKey);
   }
 
   getToken(): string | null {
-    return localStorage.getItem('auth_token');
+    return localStorage.getItem(this.tokenKey);
   }
 }
 

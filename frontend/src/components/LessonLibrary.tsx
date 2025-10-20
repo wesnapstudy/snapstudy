@@ -1,7 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Lesson } from '../types';
-import UploadModal from './UploadModal';
-import './LessonLibrary.css';
 
 interface LessonLibraryProps {
   lessons: Lesson[];
@@ -16,39 +14,33 @@ const LessonLibrary: React.FC<LessonLibraryProps> = ({
   onLessonSelect,
   onLessonUpload
 }) => {
-  const [showUploadModal, setShowUploadModal] = useState(false);
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed': return '✅';
-      case 'processing': return '⏳';
-      case 'failed': return '❌';
-      default: return '📄';
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      onLessonUpload(file);
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
   };
 
   return (
     <div className="lesson-library">
-      <div className="library-header">
-        <h2>📚 My Lessons</h2>
-        <button 
-          className="upload-button"
-          onClick={() => setShowUploadModal(true)}
-        >
-          + Upload
-        </button>
+      <h2>Your Lessons</h2>
+      
+      <div className="upload-section">
+        <input
+          type="file"
+          id="file-upload"
+          accept=".pdf,.doc,.docx,.txt"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+        />
+        <label htmlFor="file-upload" className="upload-button">
+          Upload New Lesson
+        </label>
       </div>
-
+      
       <div className="lessons-list">
         {lessons.length === 0 ? (
-          <div className="empty-state">
-            <p>No lessons yet</p>
-            <p className="empty-subtitle">Upload your first document to get started!</p>
-          </div>
+          <p>No lessons yet. Upload your first lesson to get started!</p>
         ) : (
           lessons.map((lesson) => (
             <div
@@ -56,29 +48,13 @@ const LessonLibrary: React.FC<LessonLibraryProps> = ({
               className={`lesson-item ${selectedLesson?.lesson_id === lesson.lesson_id ? 'selected' : ''}`}
               onClick={() => onLessonSelect(lesson)}
             >
-              <div className="lesson-icon">
-                {getStatusIcon(lesson.status)}
-              </div>
-              <div className="lesson-info">
-                <h3 className="lesson-title">{lesson.title}</h3>
-                <p className="lesson-meta">
-                  {formatDate(lesson.created_at)} • {lesson.content_type.split('/')[1]?.toUpperCase()}
-                </p>
-                <div className={`lesson-status ${lesson.status}`}>
-                  {lesson.status}
-                </div>
-              </div>
+              <h3>{lesson.title}</h3>
+              <p>Status: {lesson.status}</p>
+              <p>Created: {new Date(lesson.created_at).toLocaleDateString()}</p>
             </div>
           ))
         )}
       </div>
-
-      {showUploadModal && (
-        <UploadModal
-          onUpload={onLessonUpload}
-          onClose={() => setShowUploadModal(false)}
-        />
-      )}
     </div>
   );
 };

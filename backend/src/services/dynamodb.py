@@ -9,6 +9,17 @@ import json
 from decimal import Decimal
 
 from ..config import settings
+from ..utils.retry import dynamodb_retry, DYNAMODB_RETRY_CONFIG
+from ..middleware.error_handler import (
+    ResourceNotFoundError, 
+    ServiceUnavailableError,
+    ValidationError,
+    handle_aws_error
+)
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class DynamoDBService:
@@ -47,6 +58,182 @@ class DynamoDBService:
         else:
             return item
     
+    def initialize(self):
+        """Initialize the DynamoDB service and verify table access."""
+        try:
+            # Test connectivity to all tables
+            tables_to_check = [
+                (self.users_table, "Users"),
+                (self.lessons_table, "Lessons"),
+                (self.micro_lessons_table, "MicroLessons"),
+                (self.quizzes_table, "Quizzes"),
+                (self.user_engagement_table, "UserEngagement"),
+                (self.chat_history_table, "ChatHistory")
+            ]
+            
+            for table, name in tables_to_check:
+                try:
+                    table.load()
+                    logger.info(f"Successfully connected to {name} table")
+                except Exception as e:
+                    logger.error(f"Failed to connect to {name} table: {str(e)}")
+                    raise ServiceUnavailableError(f"DynamoDB {name} table", str(e))
+            
+            logger.info("DynamoDB service initialized successfully")
+            
+        except Exception as e:
+            logger.error(f"DynamoDB initialization failed: {str(e)}")
+            raise ServiceUnavailableError("DynamoDB", f"Initialization failed: {str(e)}")
+    
+    def health_check(self):
+        """Perform health check on DynamoDB service."""
+        try:
+            # Simple health check - describe one table
+            self.users_table.load()
+            return {"status": "healthy", "service": "dynamodb"}
+        except Exception as e:
+            logger.error(f"DynamoDB health check failed: {str(e)}")
+            raise ServiceUnavailableError("DynamoDB", f"Health check failed: {str(e)}")
+    
+    def cleanup(self):
+        """Cleanup DynamoDB resources."""
+        try:
+            # Close any open connections if needed
+            logger.info("DynamoDB service cleanup completed")
+        except Exception as e:
+            logger.error(f"DynamoDB cleanup error: {str(e)}")
+    
+    def get_item_sync(self, table_name: str, key: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Get item from DynamoDB table with retry logic (synchronous)."""
+        try:
+            table = getattr(self, f"{table_name.lower()}_table")
+            response = table.get_item(Key=key)
+            
+            if 'Item' in response:
+                return self._deserialize_item(response['Item'])
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting item from {table_name}: {str(e)}")
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
+    
+    async def get_item(self, table_name: str, key: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Get item from DynamoDB table with retry logic (async wrapper)."""
+        import asyncio
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self.get_item_sync, table_name, key
+        )
+    
+    def put_item_sync(self, table_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
+        """Put item to DynamoDB table with retry logic (synchronous)."""
+        try:
+            table = getattr(self, f"{table_name.lower()}_table")
+            serialized_item = self._serialize_item(item)
+            
+            table.put_item(Item=serialized_item)
+            return item
+            
+        except Exception as e:
+            logger.error(f"Error putting item to {table_name}: {str(e)}")
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
+    
+    async def put_item(self, table_name: str, item: Dict[str, Any]) -> Dict[str, Any]:
+        """Put item to DynamoDB table with retry logic (async wrapper)."""
+        import asyncio
+        return await asyncio.get_event_loop().run_in_executor(
+            None, self.put_item_sync, table_name, item
+        )
+    
+    @dynamodb_retry
+    async def update_item(
+        self, 
+        table_name: str, 
+        key: Dict[str, Any], 
+        update_expression: str,
+        expression_attribute_values: Dict[str, Any],
+        expression_attribute_names: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
+        """Update item in DynamoDB table with retry logic."""
+        try:
+            table = getattr(self, f"{table_name.lower()}_table")
+            
+            update_params = {
+                'Key': key,
+                'UpdateExpression': update_expression,
+                'ExpressionAttributeValues': self._serialize_item(expression_attribute_values),
+                'ReturnValues': 'ALL_NEW'
+            }
+            
+            if expression_attribute_names:
+                update_params['ExpressionAttributeNames'] = expression_attribute_names
+            
+            response = table.update_item(**update_params)
+            
+            if 'Attributes' in response:
+                return self._deserialize_item(response['Attributes'])
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Error updating item in {table_name}: {str(e)}")
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
+    
+    @dynamodb_retry
+    async def delete_item(self, table_name: str, key: Dict[str, Any]) -> bool:
+        """Delete item from DynamoDB table with retry logic."""
+        try:
+            table = getattr(self, f"{table_name.lower()}_table")
+            table.delete_item(Key=key)
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error deleting item from {table_name}: {str(e)}")
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
+    
+    @dynamodb_retry
+    async def query_items(
+        self, 
+        table_name: str, 
+        key_condition: Any,
+        index_name: Optional[str] = None,
+        filter_expression: Optional[Any] = None,
+        limit: Optional[int] = None,
+        scan_index_forward: bool = True
+    ) -> List[Dict[str, Any]]:
+        """Query items from DynamoDB table with retry logic."""
+        try:
+            table = getattr(self, f"{table_name.lower()}_table")
+            
+            query_params = {
+                'KeyConditionExpression': key_condition,
+                'ScanIndexForward': scan_index_forward
+            }
+            
+            if index_name:
+                query_params['IndexName'] = index_name
+            
+            if filter_expression:
+                query_params['FilterExpression'] = filter_expression
+            
+            if limit:
+                query_params['Limit'] = limit
+            
+            response = table.query(**query_params)
+            
+            items = []
+            if 'Items' in response:
+                items = [self._deserialize_item(item) for item in response['Items']]
+            
+            return items
+            
+        except Exception as e:
+            logger.error(f"Error querying items from {table_name}: {str(e)}")
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
+
     # User operations
     async def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create a new user."""
