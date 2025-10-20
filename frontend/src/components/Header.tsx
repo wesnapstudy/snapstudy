@@ -5,8 +5,8 @@ import './Header.css';
 interface HeaderProps {
   user: User;
   userProfile: UserProfile | null;
-  currentView: 'lessons' | 'settings';
-  onViewChange: (view: 'lessons' | 'settings') => void;
+  currentView: 'lessons' | 'multimedia' | 'settings';
+  onViewChange: (view: 'lessons' | 'multimedia' | 'settings') => void;
   onLogout: () => void;
 }
 
@@ -30,6 +30,12 @@ const Header: React.FC<HeaderProps> = ({
               onClick={() => onViewChange('lessons')}
             >
               📚 Lessons
+            </button>
+            <button 
+              className={currentView === 'multimedia' ? 'active' : ''}
+              onClick={() => onViewChange('multimedia')}
+            >
+              🎵 Multimedia
             </button>
             <button 
               className={currentView === 'settings' ? 'active' : ''}

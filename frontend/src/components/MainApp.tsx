@@ -4,6 +4,7 @@ import { lessonService } from '../services/lessonService';
 import Header from './Header';
 import LessonLibrary from './LessonLibrary';
 import LessonViewer from './LessonViewer';
+import MultimediaLibrary from './MultimediaLibrary';
 import StudyBuddy from './StudyBuddy';
 import UserSettings from './UserSettings';
 import Footer from './Footer';
@@ -14,7 +15,7 @@ interface MainAppProps {
   onLogout: () => void;
 }
 
-type ViewType = 'lessons' | 'settings';
+type ViewType = 'lessons' | 'multimedia' | 'settings';
 
 const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [currentView, setCurrentView] = useState<ViewType>('lessons');
@@ -110,6 +111,10 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             lesson={selectedLesson}
             user={user}
           />
+        </div>
+      ) : currentView === 'multimedia' ? (
+        <div className="multimedia-view">
+          <MultimediaLibrary />
         </div>
       ) : (
         <UserSettings 

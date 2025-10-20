@@ -9,7 +9,7 @@ import logging
 from ..config import settings
 from ..services.auth import auth_service
 from ..services.dynamodb import db_service
-from .routers import auth, users, lessons, content, ai_services, adaptive, quiz, chat, analytics
+from .routers import auth, users, lessons, content, ai_services, adaptive, quiz, chat, analytics, multimedia
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -72,6 +72,7 @@ app.include_router(adaptive.router, prefix="/api/v1/adaptive", tags=["Adaptive L
 app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz System"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["Agentic Chat"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Learning Analytics"])
+app.include_router(multimedia.router, prefix="/api/v1/multimedia", tags=["Multimedia Generation"])
 
 @app.get("/")
 async def root():

@@ -18,6 +18,8 @@ import boto3
 
 from .bedrock import bedrock_service
 from .dynamodb import db_service
+from .audio_generation import audio_generation_service
+from .video_generation import video_generation_service
 from ..models.lesson import LessonStatus, ProcessingStatus
 from ..config import settings
 
@@ -293,6 +295,97 @@ class BedrockAgentCore:
             'timestamp': datetime.now(timezone.utc).isoformat(),
             'warning': 'System running without TRUE autonomous AI capabilities'
         }
+
+    async def generate_multi_modal_micro_lesson(
+        self,
+        lesson_content: str,
+        user_profile: Dict[str, Any],
+        sequence_number: int,
+        total_lessons: int,
+        content_types: List[str] = ['text']
+    ) -> Dict[str, Any]:
+        """
+        Generate micro-lesson in multiple formats (text, audio, video).
+        
+        Args:
+            lesson_content: Raw lesson content
+            user_profile: User preferences and learning profile
+            sequence_number: Position in lesson sequence
+            total_lessons: Total number of lessons
+            content_types: List of content types to generate ['text', 'audio', 'video']
+            
+        Returns:
+            Dict containing all generated lesson formats
+        """
+        try:
+            logger.info(f"Generating multi-modal micro-lesson {sequence_number}/{total_lessons}")
+            
+            results = {
+                'lesson_id': str(uuid.uuid4()),
+                'sequence_number': sequence_number,
+                'total_lessons': total_lessons,
+                'generated_formats': [],
+                'user_id': user_profile.get('user_id'),
+                'generated_at': datetime.now(timezone.utc).isoformat()
+            }
+            
+            # 1. Generate text micro-lesson (always generated first)
+            if 'text' in content_types:
+                text_lesson = await bedrock_service.generate_micro_lesson(
+                    lesson_content, user_profile, sequence_number, total_lessons
+                )
+                text_lesson['micro_lesson_id'] = results['lesson_id']
+                results['text_lesson'] = text_lesson
+                results['generated_formats'].append('text')
+                
+                # Store text lesson in DynamoDB
+                await db_service.put_item('MicroLessons', text_lesson)
+            
+            # 2. Generate audio micro-lesson if requested
+            if 'audio' in content_types and results.get('text_lesson'):
+                try:
+                    audio_lesson = await audio_generation_service.generate_audio_micro_lesson(
+                        results['text_lesson'], user_profile
+                    )
+                    results['audio_lesson'] = audio_lesson
+                    results['generated_formats'].append('audio')
+                    logger.info(f"Audio lesson generated: {audio_lesson['audio_lesson_id']}")
+                except Exception as e:
+                    logger.error(f"Audio generation failed: {e}")
+                    results['audio_error'] = str(e)
+            
+            # 3. Generate video micro-lesson if requested
+            if 'video' in content_types and results.get('text_lesson'):
+                try:
+                    video_lesson = await video_generation_service.generate_video_micro_lesson(
+                        results['text_lesson'], user_profile
+                    )
+                    results['video_lesson'] = video_lesson
+                    results['generated_formats'].append('video')
+                    logger.info(f"Video lesson generated: {video_lesson['video_lesson_id']}")
+                except Exception as e:
+                    logger.error(f"Video generation failed: {e}")
+                    results['video_error'] = str(e)
+            
+            # 4. Track engagement for multi-modal generation
+            await db_service.track_engagement({
+                'user_id': user_profile.get('user_id'),
+                'event_type': 'multi_modal_lesson_generated',
+                'event_data': {
+                    'lesson_id': results['lesson_id'],
+                    'sequence_number': sequence_number,
+                    'generated_formats': results['generated_formats'],
+                    'content_types_requested': content_types,
+                    'success_rate': len(results['generated_formats']) / len(content_types)
+                }
+            })
+            
+            logger.info(f"Multi-modal lesson generated successfully: {results['generated_formats']}")
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error generating multi-modal micro-lesson: {e}")
+            raise Exception(f"Failed to generate multi-modal lesson: {str(e)}")
 
     async def plan_learning_sequence(self, context: Dict[str, Any], objective: str) -> List[Dict[str, Any]]:
         """

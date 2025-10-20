@@ -30,4 +30,17 @@
     gap: 15px;
     padding: 10px;
   }
+}/* 
+Multimedia View */
+.multimedia-view {
+  flex: 1;
+  padding: 0;
+  background: #f8f9fa;
+}
+
+/* Responsive adjustments for multimedia */
+@media (max-width: 768px) {
+  .multimedia-view {
+    padding: 0;
+  }
 }

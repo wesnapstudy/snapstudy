@@ -233,9 +233,9 @@ stateDiagram-v2
 
 ### Component 3: Adaptive Learning Agent (Core Autonomous Agent)
 
-**Purpose:** The autonomous brain that makes real-time decisions on lesson sequencing, quiz generation, and adaptive learning paths without manual intervention.
+**Purpose:** The autonomous brain that makes real-time decisions on lesson sequencing, quiz generation, and adaptive learning paths without manual intervention. Now includes multi-modal content generation.
 
-**Services:** Bedrock Claude 4, AgentCore primitives, DynamoDB, Step Functions, Lambda, SQS, EventBridge optional Bedrock Nova for audio/video
+**Services:** Bedrock Claude 4, AgentCore primitives, DynamoDB, Step Functions, Lambda, SQS, EventBridge, Amazon Polly (audio), Amazon Nova Reel (video)
 
 **Autonomous Decision Loop:**
 1. Fetch user context (profile, progress, engagement history, recent performance)
@@ -279,9 +279,18 @@ stateDiagram-v2
 - POST /adaptive/start-lesson - Initialize learning session
 - GET /adaptive/next-micro-lesson - Get next micro-lesson (autonomous decision)
 - POST /adaptive/submit-quiz - Submit quiz for evaluation
-- POST /adaptive/check-answer - Check individual answer (NEW)
-- GET /adaptive/quiz-feedback/{quiz_id} - Get detailed feedback (NEW)
-- POST /adaptive/request-hint - Get contextual hint for current question (NEW)
+- POST /adaptive/check-answer - Check individual answer
+- GET /adaptive/quiz-feedback/{quiz_id} - Get detailed feedback
+- POST /adaptive/request-hint - Get contextual hint for current question
+
+**NEW Multi-Modal Generation Endpoints:**
+- POST /multimedia/generate-audio - Generate audio from text lesson
+- POST /multimedia/generate-video - Generate video from text lesson  
+- POST /multimedia/generate-multimodal - Generate multiple formats simultaneously
+- GET /multimedia/audio-lesson/{id} - Get audio lesson details
+- GET /multimedia/video-lesson/{id} - Get video lesson details
+- GET /multimedia/user-multimedia-lessons - List user's multimedia content
+- GET /multimedia/generation-status/{lesson_id} - Check generation status
 
 **AgentCore Integration:**
 ```python
@@ -342,6 +351,67 @@ def analyze_performance_and_adapt(self, quiz_score: float, completion_time: int,
     
     return json.loads(response['body'].read())
 ```
+
+### Component 3.5: Multi-Modal Content Generation System
+
+**Purpose:** Generate audio and video micro-lessons from text content using AI services, providing personalized learning experiences across different modalities.
+
+**Services:** Amazon Polly (Text-to-Speech), Amazon Nova Reel (AI Video Generation), Bedrock Claude 4 (Script Optimization), S3 (Media Storage)
+
+**Audio Generation Features:**
+- **Voice Personalization**: Multiple voice profiles (professional, friendly, authoritative)
+- **Learning-Optimized Speech**: SSML markup for emphasis, pacing, and natural pauses
+- **Adaptive Pacing**: Speaking rate adjusted based on learning style and attention span
+- **Key Concept Emphasis**: Important terms highlighted with vocal emphasis
+- **Pronunciation Guides**: Technical terms with proper pronunciation
+- **Interactive Timestamps**: Key concept markers for navigation
+
+**Video Generation Features:**
+- **AI-Generated Visuals**: Nova Reel creates educational scenes from text descriptions
+- **Professional Styling**: Visual styles adapted to user profession and preferences
+- **Learning-Optimized Pacing**: Scene duration based on learning style and comprehension needs
+- **Interactive Elements**: Pause points, reflection moments, knowledge checks
+- **Accessibility Features**: Subtitles, audio descriptions, high contrast modes
+- **Visual Learning Elements**: Diagrams, animations, text overlays optimized for visual learners
+
+**Multi-Modal Generation Workflow:**
+1. **Text Optimization**: Convert written content to speech/video-friendly format
+2. **Personalization**: Apply user preferences (voice, visual style, pacing)
+3. **Content Generation**: 
+   - Audio: Polly synthesis with SSML markup
+   - Video: Nova Reel scene generation with narration
+4. **Enhancement**: Add learning-specific features (timestamps, interactions)
+5. **Storage**: S3 storage with metadata in DynamoDB
+6. **Delivery**: Presigned URLs for secure content access
+
+**Learning Style Adaptations:**
+- **Visual Learners**: High visual density, frequent diagrams, extensive text overlays
+- **Auditory Learners**: Emphasis on narration quality, minimal visual distractions
+- **Reading Learners**: Slower pacing, detailed text overlays, comprehensive subtitles
+- **Kinesthetic Learners**: Fast-paced animations, interactive elements, shorter scenes
+
+**API Integration:**
+```python
+# Generate multi-modal lesson
+lesson_results = await adaptive_learning_agent.generate_multi_modal_micro_lesson(
+    lesson_content=content,
+    user_profile=user_profile,
+    content_types=['text', 'audio', 'video']
+)
+
+# Results include all generated formats
+{
+    'text_lesson': {...},
+    'audio_lesson': {'audio_url': '...', 'duration': 180, 'voice_profile': '...'},
+    'video_lesson': {'video_url': '...', 'duration': 200, 'interactive_elements': [...]}
+}
+```
+
+**Storage Architecture:**
+- **Audio Files**: S3 bucket with MP3 format, 22kHz sample rate
+- **Video Files**: S3 bucket with MP4 format, 1280x720 HD resolution
+- **Metadata**: DynamoDB tables (AudioLessons, VideoLessons) with playback information
+- **Access Control**: Presigned URLs with 24-hour expiration for security
 
 ### Component 4: Chat & Feedback Agent
 

@@ -99,6 +99,108 @@ export interface QuizMetadata {
   adaptive_features?: string[];
 }
 
+// Multimedia Types
+export interface VoiceProfile {
+  VoiceId: string;
+  Engine: string;
+  LanguageCode: string;
+  speaking_rate?: string;
+  volume?: string;
+}
+
+export interface VisualStyle {
+  style: string;
+  color_scheme: string;
+  background: string;
+  typography: string;
+}
+
+export interface Timestamp {
+  time_seconds: number;
+  concept: string;
+  type: string;
+  visual_element?: string;
+}
+
+export interface InteractiveElement {
+  type: string;
+  time_seconds: number;
+  title: string;
+  description: string;
+  interaction?: string;
+}
+
+export interface AudioLesson {
+  audio_lesson_id: string;
+  text_lesson_id: string;
+  title: string;
+  audio_url: string;
+  duration_seconds: number;
+  file_size_bytes: number;
+  voice_profile: VoiceProfile;
+  learning_adaptations: Record<string, any>;
+  transcript: string;
+  key_timestamps: Timestamp[];
+  generated_at: string;
+  format: string;
+  sample_rate: string;
+}
+
+export interface VideoLesson {
+  video_lesson_id: string;
+  text_lesson_id: string;
+  title: string;
+  video_url: string;
+  duration_seconds: number;
+  file_size_bytes: number;
+  resolution: string;
+  frame_rate: number;
+  visual_style: VisualStyle;
+  learning_adaptations: Record<string, any>;
+  script: Record<string, any>;
+  scenes: string[];
+  narration_metadata: Record<string, any>;
+  key_timestamps: Timestamp[];
+  interactive_elements: InteractiveElement[];
+  generated_at: string;
+  format: string;
+}
+
+export interface MultimediaPreferences {
+  voice_preference: string;
+  tone_preference: string;
+  speaking_rate: string;
+  audio_volume: string;
+  visual_style: string;
+  include_narration: boolean;
+  include_subtitles: boolean;
+  video_quality: string;
+}
+
+export interface GenerationStatus {
+  lesson_id: string;
+  text_lesson: {
+    status: string;
+    available: boolean;
+  };
+  audio_lesson: {
+    status: string;
+    available: boolean;
+    audio_lesson_id?: string;
+  };
+  video_lesson: {
+    status: string;
+    available: boolean;
+    video_lesson_id?: string;
+  };
+  generation_options: {
+    can_generate_audio: boolean;
+    can_generate_video: boolean;
+    estimated_audio_time: string;
+    estimated_video_time: string;
+  };
+}
+
 export interface QuizResults {
   quiz_id: string;
   overall_score: number;
