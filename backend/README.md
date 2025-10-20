@@ -4,7 +4,7 @@ Python-based backend for the SnapStudy adaptive learning platform.
 
 ## Architecture
 
-- **Framework**: FastAPI with Mangum for AWS Lambda
+- **Framework**: FastAPI for container deployment
 - **Database**: Amazon DynamoDB
 - **Authentication**: AWS Cognito
 - **Storage**: Amazon S3

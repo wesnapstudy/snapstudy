@@ -1,97 +1,79 @@
 # SnapStudy Backend Test Suite
 
-This directory contains comprehensive tests for all SnapStudy backend services and functionality.
+This directory contains comprehensive functional tests for all SnapStudy backend services and functionality.
 
-## Test Files Overview
+## Core Test Suite (Pytest-based)
 
-### Core Service Tests
-- **`test_adaptive_agent.py`** - Tests for the adaptive learning agent and AgentCore integration
-- **`test_agentcore_integration.py`** - Tests for Bedrock AgentCore primitives integration
-- **`test_ai_services.py`** - Tests for AI/ML services and Bedrock integration
-- **`test_analytics_system.py`** - Tests for learning analytics and progress tracking
-- **`test_bedrock_retry.py`** - Tests for Bedrock retry logic with exponential backoff
+### Primary Test Files
+- **`test_functional_comprehensive.py`** - Core API infrastructure, database operations, authentication, error handling (37 tests)
+- **`test_services_functional.py`** - Detailed service integration, retry mechanisms, data consistency (24 tests)
+- **`test_lambda_functional.py`** - Lambda function handlers, content processing, multimedia generation (17 tests)
+- **`test_ai_services_functional.py`** - AI/ML services integration, Bedrock, S3, Textract, Transcribe (19 tests)
 
-### API and Communication Tests
-- **`test_api_endpoints.py`** - Tests for REST API endpoints
-- **`test_chat_agent.py`** - Tests for agentic chat and tutoring system
-- **`test_chat_agent_mock.py`** - Mocked tests for chat functionality (no AWS required)
+### Extended Test Files
+- **`test_adaptive_analytics_functional.py`** - Adaptive learning agent and analytics system integration
+- **`test_quiz_chat_functional.py`** - Quiz engine and chat agent functionality
 
-### Quiz System Tests
-- **`test_quiz_engine.py`** - Tests for intelligent quiz generation and evaluation
+### Test Runners
+- **`run_core_tests.py`** - Simple, reliable test runner for core functionality
+- **`run_all_functional_tests.py`** - Comprehensive test runner for all test suites
 
 ## Running Tests
 
-### Prerequisites
-1. Ensure you're using the `hackathon-user-01` AWS profile:
-   ```bash
-   $env:AWS_PROFILE = "hackathon-user-01"
-   aws sts get-caller-identity  # Verify identity
-   ```
-
-2. Install dependencies:
-   ```bash
-   pip install -r ../requirements.txt
-   ```
-
-### Running Individual Tests
+### Quick Start (Recommended)
 
 ```bash
-# Run from the backend directory
-cd backend
+# Run core test suite (most reliable)
+cd backend/tests
+python run_core_tests.py
+```
 
-# Test analytics system
-python tests/test_analytics_system.py
+### Running Individual Test Suites
 
-# Test quiz engine
-python tests/test_quiz_engine.py
+```bash
+# Run from the backend/tests directory
+cd backend/tests
 
-# Test chat agent (requires AWS)
-python tests/test_chat_agent.py
+# Core functionality tests
+python -m pytest test_functional_comprehensive.py -v
+python -m pytest test_services_functional.py -v
+python -m pytest test_lambda_functional.py -v
+python -m pytest test_ai_services_functional.py -v
 
-# Test chat agent (mocked, no AWS required)
-python tests/test_chat_agent_mock.py
-
-# Test Bedrock retry logic
-python tests/test_bedrock_retry.py
-
-# Test adaptive agent
-python tests/test_adaptive_agent.py
+# Extended functionality tests
+python -m pytest test_adaptive_analytics_functional.py -v
+python -m pytest test_quiz_chat_functional.py -v
 ```
 
 ### Running All Tests
 
 ```bash
-# Run all tests (from backend directory)
-python -m pytest tests/ -v
+# Run all test suites
+cd backend/tests
+python run_all_functional_tests.py
 
-# Or run them individually
-for test in tests/test_*.py; do
-    echo "Running $test..."
-    python "$test"
-done
+# Or use pytest directly
+python -m pytest . -v
 ```
 
-## Test Categories
+## Test Coverage
 
-### 🧪 **Unit Tests**
-- Individual service functionality
-- Core algorithm testing
-- Data processing validation
+### 🎯 **Comprehensive Backend Coverage (97+ Tests)**
+- **Core API Infrastructure**: FastAPI, health endpoints, CORS, security headers
+- **Database Operations**: DynamoDB CRUD, serialization, async operations
+- **Authentication & Authorization**: JWT validation, user sessions
+- **Error Handling & Middleware**: Custom exceptions, AWS error handling
+- **Lambda Functions**: Main handler, content/multimedia processors
+- **AI Services Integration**: Bedrock, S3, Textract, Transcribe
+- **Adaptive Learning**: Autonomous decision-making, analytics
+- **Quiz & Chat Systems**: Intelligent generation, evaluation, conversation
+- **Performance & Reliability**: Concurrent operations, error recovery
 
-### 🔗 **Integration Tests**
-- AWS service integration
-- Database operations
-- API endpoint testing
-
-### 🎭 **Mocked Tests**
-- Tests that don't require AWS credentials
-- Isolated functionality testing
-- Development environment friendly
-
-### 📊 **System Tests**
-- End-to-end functionality
-- Complete workflow testing
-- Performance validation
+### 🧪 **Test Types**
+- **Functional Tests**: End-to-end workflow validation
+- **Integration Tests**: Service interaction testing
+- **Mocked Tests**: Isolated functionality (no AWS required)
+- **Performance Tests**: Concurrent operations, scaling, timeouts
 
 ## Test Data
 

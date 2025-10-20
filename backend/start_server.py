@@ -50,11 +50,14 @@ def main():
     
     try:
         # Start the server
+        # Use reload only in development (not in production containers)
+        is_development = os.getenv('ENVIRONMENT', 'development') == 'development'
+        
         uvicorn.run(
             "src.api.main:app",
             host="0.0.0.0",
             port=8000,
-            reload=True,
+            reload=is_development,
             log_level="info"
         )
     except KeyboardInterrupt:

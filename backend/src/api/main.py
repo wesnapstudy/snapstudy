@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from mangum import Mangum
+
 import logging
 import time
 import uuid
@@ -206,5 +206,4 @@ async def shutdown_event():
     
     logger.info("SnapStudy API shutdown complete")
 
-# Lambda handler
-handler = Mangum(app)
+# Container/Server deployment - no Lambda handler needed

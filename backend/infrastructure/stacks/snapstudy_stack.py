@@ -37,8 +37,8 @@ class SnapStudyStack(Stack):
         # Create Cognito resources
         self.create_cognito_resources()
         
-        # Create Lambda functions
-        self.create_lambda_functions()
+        # Lambda functions removed - using container deployment
+        # self.create_lambda_functions()
         
         # Create API Gateway
         self.create_api_gateway()
@@ -318,10 +318,12 @@ class SnapStudyStack(Stack):
         )
 
     def create_lambda_functions(self):
-        """Create Lambda functions."""
+        """Create Lambda functions - REMOVED for container deployment."""
+        pass
         
+        # COMMENTED OUT - Lambda code removed for container deployment
         # Create Lambda execution role
-        lambda_role = iam.Role(
+        # lambda_role = iam.Role(
             self, "LambdaExecutionRole",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             managed_policies=[

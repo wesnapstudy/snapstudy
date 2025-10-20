@@ -24,6 +24,8 @@ class Settings:
     
     # S3 Configuration
     content_bucket: str = os.getenv("CONTENT_BUCKET", "snapstudy-content")
+    s3_bucket_name: str = os.getenv("S3_BUCKET_NAME", "snapstudy-content")
+    audio_content_bucket: str = os.getenv("AUDIO_CONTENT_BUCKET", "snapstudy-audio-content")
     
     # Cognito Configuration
     user_pool_id: str = os.getenv("USER_POOL_ID", "")
@@ -36,6 +38,10 @@ class Settings:
     
     # CORS Configuration
     cors_origins: List[str] = os.getenv("CORS_ORIGINS", "*").split(",")
+    
+    # Bedrock Configuration
+    bedrock_model_id: str = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
+    bedrock_region: str = os.getenv("BEDROCK_REGION", "us-east-1")
     
     # Environment
     environment: str = os.getenv("ENVIRONMENT", "development")
