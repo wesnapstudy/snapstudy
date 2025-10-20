@@ -12,6 +12,8 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_iam as iam,
     aws_logs as logs,
+    aws_wafv2 as wafv2,
+    aws_cloudwatch as cloudwatch,
 )
 from constructs import Construct
 
@@ -36,7 +38,13 @@ class SnapStudyStack(Stack):
         
         # Create API Gateway
         self.create_api_gateway()
-        
+
+        # Create AWS WAF
+        self.create_waf()
+
+        # Create CloudWatch Dashboard and Alarms
+        self.create_monitoring()
+
         # Create outputs
         self.create_outputs()
 
@@ -368,13 +376,79 @@ class SnapStudyStack(Stack):
             )
         )
         
-        # Add Bedrock permissions
+        # Add Bedrock permissions (LLM invocation)
         lambda_role.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
                     "bedrock:InvokeModel",
                     "bedrock:InvokeModelWithResponseStream"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add Bedrock Agent Runtime permissions (AgentCore primitives)
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "bedrock-agent-runtime:InvokeAgent",
+                    "bedrock-agent-runtime:Retrieve",
+                    "bedrock-agent-runtime:RetrieveAndGenerate"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add CloudWatch Logs permissions for enhanced monitoring
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:PutMetricFilter",
+                    "logs:PutRetentionPolicy"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add CloudWatch Metrics permissions
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "cloudwatch:PutMetricData"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add Textract permissions for document processing
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "textract:DetectDocumentText",
+                    "textract:AnalyzeDocument",
+                    "textract:StartDocumentTextDetection",
+                    "textract:GetDocumentTextDetection"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add Transcribe permissions for audio/video processing
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "transcribe:StartTranscriptionJob",
+                    "transcribe:GetTranscriptionJob",
+                    "transcribe:DeleteTranscriptionJob"
                 ],
                 resources=["*"]
             )
@@ -444,6 +518,243 @@ class SnapStudyStack(Stack):
             default_integration=lambda_integration,
             any_method=True
         )
+
+    def create_waf(self):
+        """Create AWS WAF Web ACL for API protection."""
+
+        # Create WAF Web ACL with managed rules
+        waf_acl = wafv2.CfnWebACL(
+            self, "ApiWafAcl",
+            default_action=wafv2.CfnWebACL.DefaultActionProperty(allow={}),
+            scope="REGIONAL",
+            visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                cloud_watch_metrics_enabled=True,
+                metric_name="SnapStudyWafMetrics",
+                sampled_requests_enabled=True
+            ),
+            name="SnapStudyApiWaf",
+            rules=[
+                # AWS Managed Rule - Common Rule Set
+                wafv2.CfnWebACL.RuleProperty(
+                    name="AWSManagedRulesCommonRuleSet",
+                    priority=1,
+                    statement=wafv2.CfnWebACL.StatementProperty(
+                        managed_rule_group_statement=wafv2.CfnWebACL.ManagedRuleGroupStatementProperty(
+                            vendor_name="AWS",
+                            name="AWSManagedRulesCommonRuleSet"
+                        )
+                    ),
+                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                        cloud_watch_metrics_enabled=True,
+                        metric_name="AWSManagedRulesCommonRuleSetMetric",
+                        sampled_requests_enabled=True
+                    ),
+                    override_action=wafv2.CfnWebACL.OverrideActionProperty(none={})
+                ),
+                # AWS Managed Rule - Known Bad Inputs
+                wafv2.CfnWebACL.RuleProperty(
+                    name="AWSManagedRulesKnownBadInputsRuleSet",
+                    priority=2,
+                    statement=wafv2.CfnWebACL.StatementProperty(
+                        managed_rule_group_statement=wafv2.CfnWebACL.ManagedRuleGroupStatementProperty(
+                            vendor_name="AWS",
+                            name="AWSManagedRulesKnownBadInputsRuleSet"
+                        )
+                    ),
+                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                        cloud_watch_metrics_enabled=True,
+                        metric_name="AWSManagedRulesKnownBadInputsRuleSetMetric",
+                        sampled_requests_enabled=True
+                    ),
+                    override_action=wafv2.CfnWebACL.OverrideActionProperty(none={})
+                ),
+                # Rate limiting rule (1000 requests per 5 minutes per IP)
+                wafv2.CfnWebACL.RuleProperty(
+                    name="RateLimitRule",
+                    priority=3,
+                    statement=wafv2.CfnWebACL.StatementProperty(
+                        rate_based_statement=wafv2.CfnWebACL.RateBasedStatementProperty(
+                            limit=1000,
+                            aggregate_key_type="IP"
+                        )
+                    ),
+                    action=wafv2.CfnWebACL.RuleActionProperty(
+                        block=wafv2.CfnWebACL.BlockActionProperty(
+                            custom_response=wafv2.CfnWebACL.CustomResponseProperty(
+                                response_code=429
+                            )
+                        )
+                    ),
+                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                        cloud_watch_metrics_enabled=True,
+                        metric_name="RateLimitRuleMetric",
+                        sampled_requests_enabled=True
+                    )
+                ),
+                # SQL Injection protection
+                wafv2.CfnWebACL.RuleProperty(
+                    name="AWSManagedRulesSQLiRuleSet",
+                    priority=4,
+                    statement=wafv2.CfnWebACL.StatementProperty(
+                        managed_rule_group_statement=wafv2.CfnWebACL.ManagedRuleGroupStatementProperty(
+                            vendor_name="AWS",
+                            name="AWSManagedRulesSQLiRuleSet"
+                        )
+                    ),
+                    visibility_config=wafv2.CfnWebACL.VisibilityConfigProperty(
+                        cloud_watch_metrics_enabled=True,
+                        metric_name="AWSManagedRulesSQLiRuleSetMetric",
+                        sampled_requests_enabled=True
+                    ),
+                    override_action=wafv2.CfnWebACL.OverrideActionProperty(none={})
+                )
+            ]
+        )
+
+        # Associate WAF with API Gateway
+        wafv2.CfnWebACLAssociation(
+            self, "ApiWafAssociation",
+            resource_arn=f"arn:aws:apigateway:{self.region}::/restapis/{self.rest_api.rest_api_id}/stages/prod",
+            web_acl_arn=waf_acl.attr_arn
+        )
+
+        self.waf_acl = waf_acl
+
+    def create_monitoring(self):
+        """Create CloudWatch Dashboard and Alarms for monitoring."""
+
+        # Create CloudWatch Dashboard
+        dashboard = cloudwatch.Dashboard(
+            self, "SnapStudyDashboard",
+            dashboard_name="SnapStudy-Metrics"
+        )
+
+        # Lambda metrics
+        dashboard.add_widgets(
+            cloudwatch.GraphWidget(
+                title="Lambda Invocations",
+                left=[
+                    self.api_lambda.metric_invocations(statistic="Sum"),
+                    self.api_lambda.metric_errors(statistic="Sum"),
+                    self.api_lambda.metric_throttles(statistic="Sum")
+                ],
+                width=12
+            ),
+            cloudwatch.GraphWidget(
+                title="Lambda Duration",
+                left=[
+                    self.api_lambda.metric_duration(statistic="Average"),
+                    self.api_lambda.metric_duration(statistic="Maximum")
+                ],
+                width=12
+            )
+        )
+
+        # API Gateway metrics
+        dashboard.add_widgets(
+            cloudwatch.GraphWidget(
+                title="API Gateway Requests",
+                left=[
+                    cloudwatch.Metric(
+                        namespace="AWS/ApiGateway",
+                        metric_name="Count",
+                        dimensions_map={"ApiName": self.rest_api.rest_api_name},
+                        statistic="Sum"
+                    ),
+                    cloudwatch.Metric(
+                        namespace="AWS/ApiGateway",
+                        metric_name="4XXError",
+                        dimensions_map={"ApiName": self.rest_api.rest_api_name},
+                        statistic="Sum"
+                    ),
+                    cloudwatch.Metric(
+                        namespace="AWS/ApiGateway",
+                        metric_name="5XXError",
+                        dimensions_map={"ApiName": self.rest_api.rest_api_name},
+                        statistic="Sum"
+                    )
+                ],
+                width=12
+            ),
+            cloudwatch.GraphWidget(
+                title="API Latency",
+                left=[
+                    cloudwatch.Metric(
+                        namespace="AWS/ApiGateway",
+                        metric_name="Latency",
+                        dimensions_map={"ApiName": self.rest_api.rest_api_name},
+                        statistic="Average"
+                    )
+                ],
+                width=12
+            )
+        )
+
+        # DynamoDB metrics
+        dashboard.add_widgets(
+            cloudwatch.GraphWidget(
+                title="DynamoDB Read/Write Units",
+                left=[
+                    self.users_table.metric_consumed_read_capacity_units(),
+                    self.users_table.metric_consumed_write_capacity_units()
+                ],
+                width=12
+            ),
+            cloudwatch.GraphWidget(
+                title="DynamoDB Throttles",
+                left=[
+                    self.users_table.metric_user_errors()
+                ],
+                width=12
+            )
+        )
+
+        # Create alarms
+        # Lambda error alarm
+        lambda_error_alarm = cloudwatch.Alarm(
+            self, "LambdaErrorAlarm",
+            alarm_name="SnapStudy-Lambda-Errors",
+            alarm_description="Alert when Lambda function has errors",
+            metric=self.api_lambda.metric_errors(statistic="Sum"),
+            threshold=10,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING
+        )
+
+        # API Gateway 5XX alarm
+        api_5xx_alarm = cloudwatch.Alarm(
+            self, "Api5XXAlarm",
+            alarm_name="SnapStudy-API-5XX-Errors",
+            alarm_description="Alert when API has 5XX errors",
+            metric=cloudwatch.Metric(
+                namespace="AWS/ApiGateway",
+                metric_name="5XXError",
+                dimensions_map={"ApiName": self.rest_api.rest_api_name},
+                statistic="Sum"
+            ),
+            threshold=5,
+            evaluation_periods=1,
+            datapoints_to_alarm=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING
+        )
+
+        # Lambda duration alarm (detect slow responses)
+        lambda_duration_alarm = cloudwatch.Alarm(
+            self, "LambdaDurationAlarm",
+            alarm_name="SnapStudy-Lambda-Duration",
+            alarm_description="Alert when Lambda execution is slow",
+            metric=self.api_lambda.metric_duration(statistic="Average"),
+            threshold=25000,  # 25 seconds (near the 30s timeout)
+            evaluation_periods=2,
+            datapoints_to_alarm=2,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING
+        )
+
+        self.dashboard = dashboard
 
     def create_outputs(self):
         """Create CloudFormation outputs."""
