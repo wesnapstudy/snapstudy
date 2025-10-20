@@ -1,0 +1,2307 @@
+{
+  "version": "tree-0.1",
+  "tree": {
+    "id": "App",
+    "path": "",
+    "children": {
+      "SnapStudyStack": {
+        "id": "SnapStudyStack",
+        "path": "SnapStudyStack",
+        "children": {
+          "UsersTable": {
+            "id": "UsersTable",
+            "path": "SnapStudyStack/UsersTable",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/UsersTable/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::DynamoDB::Table",
+                  "aws:cdk:cloudformation:props": {
+                    "attributeDefinitions": [
+                      {
+                        "attributeName": "user_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "email",
+                        "attributeType": "S"
+                      }
+                    ],
+                    "billingMode": "PAY_PER_REQUEST",
+                    "globalSecondaryIndexes": [
+                      {
+                        "indexName": "EmailIndex",
+                        "keySchema": [
+                          {
+                            "attributeName": "email",
+                            "keyType": "HASH"
+                          }
+                        ],
+                        "projection": {
+                          "projectionType": "ALL"
+                        }
+                      }
+                    ],
+                    "keySchema": [
+                      {
+                        "attributeName": "user_id",
+                        "keyType": "HASH"
+                      }
+                    ],
+                    "pointInTimeRecoverySpecification": {
+                      "pointInTimeRecoveryEnabled": true
+                    },
+                    "sseSpecification": {
+                      "sseEnabled": true
+                    },
+                    "streamSpecification": {
+                      "streamViewType": "NEW_AND_OLD_IMAGES"
+                    },
+                    "tableName": "SnapStudy-Users"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_dynamodb.CfnTable",
+                  "version": "2.110.0"
+                }
+              },
+              "ScalingRole": {
+                "id": "ScalingRole",
+                "path": "SnapStudyStack/UsersTable/ScalingRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dynamodb.Table",
+              "version": "2.110.0"
+            }
+          },
+          "LessonsTable": {
+            "id": "LessonsTable",
+            "path": "SnapStudyStack/LessonsTable",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/LessonsTable/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::DynamoDB::Table",
+                  "aws:cdk:cloudformation:props": {
+                    "attributeDefinitions": [
+                      {
+                        "attributeName": "lesson_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "user_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "created_at",
+                        "attributeType": "S"
+                      }
+                    ],
+                    "billingMode": "PAY_PER_REQUEST",
+                    "globalSecondaryIndexes": [
+                      {
+                        "indexName": "UserLessonsIndex",
+                        "keySchema": [
+                          {
+                            "attributeName": "user_id",
+                            "keyType": "HASH"
+                          },
+                          {
+                            "attributeName": "created_at",
+                            "keyType": "RANGE"
+                          }
+                        ],
+                        "projection": {
+                          "projectionType": "ALL"
+                        }
+                      }
+                    ],
+                    "keySchema": [
+                      {
+                        "attributeName": "lesson_id",
+                        "keyType": "HASH"
+                      }
+                    ],
+                    "pointInTimeRecoverySpecification": {
+                      "pointInTimeRecoveryEnabled": true
+                    },
+                    "sseSpecification": {
+                      "sseEnabled": true
+                    },
+                    "streamSpecification": {
+                      "streamViewType": "NEW_AND_OLD_IMAGES"
+                    },
+                    "tableName": "SnapStudy-Lessons",
+                    "timeToLiveSpecification": {
+                      "attributeName": "ttl",
+                      "enabled": true
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_dynamodb.CfnTable",
+                  "version": "2.110.0"
+                }
+              },
+              "ScalingRole": {
+                "id": "ScalingRole",
+                "path": "SnapStudyStack/LessonsTable/ScalingRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dynamodb.Table",
+              "version": "2.110.0"
+            }
+          },
+          "MicroLessonsTable": {
+            "id": "MicroLessonsTable",
+            "path": "SnapStudyStack/MicroLessonsTable",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/MicroLessonsTable/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::DynamoDB::Table",
+                  "aws:cdk:cloudformation:props": {
+                    "attributeDefinitions": [
+                      {
+                        "attributeName": "micro_lesson_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "lesson_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "sequence_number",
+                        "attributeType": "N"
+                      }
+                    ],
+                    "billingMode": "PAY_PER_REQUEST",
+                    "globalSecondaryIndexes": [
+                      {
+                        "indexName": "LessonMicroLessonsIndex",
+                        "keySchema": [
+                          {
+                            "attributeName": "lesson_id",
+                            "keyType": "HASH"
+                          },
+                          {
+                            "attributeName": "sequence_number",
+                            "keyType": "RANGE"
+                          }
+                        ],
+                        "projection": {
+                          "projectionType": "ALL"
+                        }
+                      }
+                    ],
+                    "keySchema": [
+                      {
+                        "attributeName": "micro_lesson_id",
+                        "keyType": "HASH"
+                      }
+                    ],
+                    "pointInTimeRecoverySpecification": {
+                      "pointInTimeRecoveryEnabled": true
+                    },
+                    "sseSpecification": {
+                      "sseEnabled": true
+                    },
+                    "streamSpecification": {
+                      "streamViewType": "NEW_AND_OLD_IMAGES"
+                    },
+                    "tableName": "SnapStudy-MicroLessons"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_dynamodb.CfnTable",
+                  "version": "2.110.0"
+                }
+              },
+              "ScalingRole": {
+                "id": "ScalingRole",
+                "path": "SnapStudyStack/MicroLessonsTable/ScalingRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dynamodb.Table",
+              "version": "2.110.0"
+            }
+          },
+          "QuizzesTable": {
+            "id": "QuizzesTable",
+            "path": "SnapStudyStack/QuizzesTable",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/QuizzesTable/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::DynamoDB::Table",
+                  "aws:cdk:cloudformation:props": {
+                    "attributeDefinitions": [
+                      {
+                        "attributeName": "quiz_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "micro_lesson_id",
+                        "attributeType": "S"
+                      }
+                    ],
+                    "billingMode": "PAY_PER_REQUEST",
+                    "globalSecondaryIndexes": [
+                      {
+                        "indexName": "MicroLessonQuizzesIndex",
+                        "keySchema": [
+                          {
+                            "attributeName": "micro_lesson_id",
+                            "keyType": "HASH"
+                          }
+                        ],
+                        "projection": {
+                          "projectionType": "ALL"
+                        }
+                      }
+                    ],
+                    "keySchema": [
+                      {
+                        "attributeName": "quiz_id",
+                        "keyType": "HASH"
+                      }
+                    ],
+                    "pointInTimeRecoverySpecification": {
+                      "pointInTimeRecoveryEnabled": true
+                    },
+                    "sseSpecification": {
+                      "sseEnabled": true
+                    },
+                    "streamSpecification": {
+                      "streamViewType": "NEW_AND_OLD_IMAGES"
+                    },
+                    "tableName": "SnapStudy-Quizzes"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_dynamodb.CfnTable",
+                  "version": "2.110.0"
+                }
+              },
+              "ScalingRole": {
+                "id": "ScalingRole",
+                "path": "SnapStudyStack/QuizzesTable/ScalingRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dynamodb.Table",
+              "version": "2.110.0"
+            }
+          },
+          "UserEngagementTable": {
+            "id": "UserEngagementTable",
+            "path": "SnapStudyStack/UserEngagementTable",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/UserEngagementTable/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::DynamoDB::Table",
+                  "aws:cdk:cloudformation:props": {
+                    "attributeDefinitions": [
+                      {
+                        "attributeName": "engagement_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "user_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "timestamp",
+                        "attributeType": "S"
+                      }
+                    ],
+                    "billingMode": "PAY_PER_REQUEST",
+                    "globalSecondaryIndexes": [
+                      {
+                        "indexName": "UserEngagementIndex",
+                        "keySchema": [
+                          {
+                            "attributeName": "user_id",
+                            "keyType": "HASH"
+                          },
+                          {
+                            "attributeName": "timestamp",
+                            "keyType": "RANGE"
+                          }
+                        ],
+                        "projection": {
+                          "projectionType": "ALL"
+                        }
+                      }
+                    ],
+                    "keySchema": [
+                      {
+                        "attributeName": "engagement_id",
+                        "keyType": "HASH"
+                      }
+                    ],
+                    "pointInTimeRecoverySpecification": {
+                      "pointInTimeRecoveryEnabled": true
+                    },
+                    "sseSpecification": {
+                      "sseEnabled": true
+                    },
+                    "streamSpecification": {
+                      "streamViewType": "NEW_AND_OLD_IMAGES"
+                    },
+                    "tableName": "SnapStudy-UserEngagement",
+                    "timeToLiveSpecification": {
+                      "attributeName": "ttl",
+                      "enabled": true
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_dynamodb.CfnTable",
+                  "version": "2.110.0"
+                }
+              },
+              "ScalingRole": {
+                "id": "ScalingRole",
+                "path": "SnapStudyStack/UserEngagementTable/ScalingRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dynamodb.Table",
+              "version": "2.110.0"
+            }
+          },
+          "ChatHistoryTable": {
+            "id": "ChatHistoryTable",
+            "path": "SnapStudyStack/ChatHistoryTable",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/ChatHistoryTable/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::DynamoDB::Table",
+                  "aws:cdk:cloudformation:props": {
+                    "attributeDefinitions": [
+                      {
+                        "attributeName": "session_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "user_id",
+                        "attributeType": "S"
+                      },
+                      {
+                        "attributeName": "created_at",
+                        "attributeType": "S"
+                      }
+                    ],
+                    "billingMode": "PAY_PER_REQUEST",
+                    "globalSecondaryIndexes": [
+                      {
+                        "indexName": "UserChatHistoryIndex",
+                        "keySchema": [
+                          {
+                            "attributeName": "user_id",
+                            "keyType": "HASH"
+                          },
+                          {
+                            "attributeName": "created_at",
+                            "keyType": "RANGE"
+                          }
+                        ],
+                        "projection": {
+                          "projectionType": "ALL"
+                        }
+                      }
+                    ],
+                    "keySchema": [
+                      {
+                        "attributeName": "session_id",
+                        "keyType": "HASH"
+                      }
+                    ],
+                    "pointInTimeRecoverySpecification": {
+                      "pointInTimeRecoveryEnabled": true
+                    },
+                    "sseSpecification": {
+                      "sseEnabled": true
+                    },
+                    "tableName": "SnapStudy-ChatHistory",
+                    "timeToLiveSpecification": {
+                      "attributeName": "ttl",
+                      "enabled": true
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_dynamodb.CfnTable",
+                  "version": "2.110.0"
+                }
+              },
+              "ScalingRole": {
+                "id": "ScalingRole",
+                "path": "SnapStudyStack/ChatHistoryTable/ScalingRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_dynamodb.Table",
+              "version": "2.110.0"
+            }
+          },
+          "ContentBucket": {
+            "id": "ContentBucket",
+            "path": "SnapStudyStack/ContentBucket",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/ContentBucket/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::S3::Bucket",
+                  "aws:cdk:cloudformation:props": {
+                    "bucketEncryption": {
+                      "serverSideEncryptionConfiguration": [
+                        {
+                          "serverSideEncryptionByDefault": {
+                            "sseAlgorithm": "AES256"
+                          }
+                        }
+                      ]
+                    },
+                    "bucketName": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "snapstudy-content-",
+                          {
+                            "Ref": "AWS::AccountId"
+                          },
+                          "-us-east-1"
+                        ]
+                      ]
+                    },
+                    "corsConfiguration": {
+                      "corsRules": [
+                        {
+                          "maxAge": 3000,
+                          "allowedHeaders": [
+                            "*"
+                          ],
+                          "allowedMethods": [
+                            "GET",
+                            "POST",
+                            "PUT"
+                          ],
+                          "allowedOrigins": [
+                            "*"
+                          ]
+                        }
+                      ]
+                    },
+                    "lifecycleConfiguration": {
+                      "rules": [
+                        {
+                          "abortIncompleteMultipartUpload": {
+                            "daysAfterInitiation": 7
+                          },
+                          "id": "DeleteIncompleteMultipartUploads",
+                          "status": "Enabled"
+                        },
+                        {
+                          "id": "TransitionToIA",
+                          "status": "Enabled",
+                          "transitions": [
+                            {
+                              "storageClass": "STANDARD_IA",
+                              "transitionInDays": 30
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "publicAccessBlockConfiguration": {
+                      "blockPublicAcls": true,
+                      "blockPublicPolicy": true,
+                      "ignorePublicAcls": true,
+                      "restrictPublicBuckets": true
+                    },
+                    "versioningConfiguration": {
+                      "status": "Enabled"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.CfnBucket",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_s3.Bucket",
+              "version": "2.110.0"
+            }
+          },
+          "UserPool": {
+            "id": "UserPool",
+            "path": "SnapStudyStack/UserPool",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/UserPool/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Cognito::UserPool",
+                  "aws:cdk:cloudformation:props": {
+                    "accountRecoverySetting": {
+                      "recoveryMechanisms": [
+                        {
+                          "name": "verified_email",
+                          "priority": 1
+                        }
+                      ]
+                    },
+                    "adminCreateUserConfig": {
+                      "allowAdminCreateUserOnly": false
+                    },
+                    "autoVerifiedAttributes": [
+                      "email"
+                    ],
+                    "emailVerificationMessage": "The verification code to your new account is {####}",
+                    "emailVerificationSubject": "Verify your new account",
+                    "policies": {
+                      "passwordPolicy": {
+                        "minimumLength": 8,
+                        "requireLowercase": true,
+                        "requireUppercase": true,
+                        "requireNumbers": true,
+                        "requireSymbols": false
+                      }
+                    },
+                    "schema": [
+                      {
+                        "name": "email",
+                        "mutable": true,
+                        "required": true
+                      },
+                      {
+                        "name": "name",
+                        "mutable": true,
+                        "required": true
+                      },
+                      {
+                        "name": "profession",
+                        "attributeDataType": "String",
+                        "mutable": true
+                      },
+                      {
+                        "name": "education_level",
+                        "attributeDataType": "String",
+                        "mutable": true
+                      },
+                      {
+                        "name": "country",
+                        "attributeDataType": "String",
+                        "mutable": true
+                      },
+                      {
+                        "name": "learning_style",
+                        "attributeDataType": "String",
+                        "mutable": true
+                      },
+                      {
+                        "name": "attention_span",
+                        "attributeDataType": "Number",
+                        "mutable": true
+                      },
+                      {
+                        "name": "difficulty_level",
+                        "attributeDataType": "String",
+                        "mutable": true
+                      }
+                    ],
+                    "smsVerificationMessage": "The verification code to your new account is {####}",
+                    "usernameAttributes": [
+                      "email"
+                    ],
+                    "userPoolName": "SnapStudy-UserPool",
+                    "verificationMessageTemplate": {
+                      "defaultEmailOption": "CONFIRM_WITH_CODE",
+                      "emailMessage": "The verification code to your new account is {####}",
+                      "emailSubject": "Verify your new account",
+                      "smsMessage": "The verification code to your new account is {####}"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cognito.CfnUserPool",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cognito.UserPool",
+              "version": "2.110.0"
+            }
+          },
+          "UserPoolClient": {
+            "id": "UserPoolClient",
+            "path": "SnapStudyStack/UserPoolClient",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/UserPoolClient/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Cognito::UserPoolClient",
+                  "aws:cdk:cloudformation:props": {
+                    "accessTokenValidity": 60,
+                    "allowedOAuthFlows": [
+                      "code"
+                    ],
+                    "allowedOAuthFlowsUserPoolClient": true,
+                    "allowedOAuthScopes": [
+                      "email",
+                      "openid",
+                      "profile"
+                    ],
+                    "callbackUrLs": [
+                      "http://localhost:3000/auth/callback"
+                    ],
+                    "clientName": "SnapStudy-WebClient",
+                    "explicitAuthFlows": [
+                      "ALLOW_USER_SRP_AUTH",
+                      "ALLOW_REFRESH_TOKEN_AUTH"
+                    ],
+                    "generateSecret": false,
+                    "idTokenValidity": 60,
+                    "logoutUrLs": [
+                      "http://localhost:3000/auth/logout"
+                    ],
+                    "preventUserExistenceErrors": "ENABLED",
+                    "refreshTokenValidity": 43200,
+                    "supportedIdentityProviders": [
+                      "COGNITO"
+                    ],
+                    "tokenValidityUnits": {
+                      "idToken": "minutes",
+                      "accessToken": "minutes",
+                      "refreshToken": "minutes"
+                    },
+                    "userPoolId": {
+                      "Ref": "UserPool6BA7E5F2"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cognito.CfnUserPoolClient",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cognito.UserPoolClient",
+              "version": "2.110.0"
+            }
+          },
+          "LambdaExecutionRole": {
+            "id": "LambdaExecutionRole",
+            "path": "SnapStudyStack/LambdaExecutionRole",
+            "children": {
+              "ImportLambdaExecutionRole": {
+                "id": "ImportLambdaExecutionRole",
+                "path": "SnapStudyStack/LambdaExecutionRole/ImportLambdaExecutionRole",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.Resource",
+                  "version": "2.110.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/LambdaExecutionRole/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                  "aws:cdk:cloudformation:props": {
+                    "assumeRolePolicyDocument": {
+                      "Statement": [
+                        {
+                          "Action": "sts:AssumeRole",
+                          "Effect": "Allow",
+                          "Principal": {
+                            "Service": "lambda.amazonaws.com"
+                          }
+                        }
+                      ],
+                      "Version": "2012-10-17"
+                    },
+                    "managedPolicyArns": [
+                      {
+                        "Fn::Join": [
+                          "",
+                          [
+                            "arn:",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            ":iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                  "version": "2.110.0"
+                }
+              },
+              "DefaultPolicy": {
+                "id": "DefaultPolicy",
+                "path": "SnapStudyStack/LambdaExecutionRole/DefaultPolicy",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "SnapStudyStack/LambdaExecutionRole/DefaultPolicy/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::IAM::Policy",
+                      "aws:cdk:cloudformation:props": {
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": [
+                                "dynamodb:DeleteItem",
+                                "dynamodb:GetItem",
+                                "dynamodb:PutItem",
+                                "dynamodb:Query",
+                                "dynamodb:Scan",
+                                "dynamodb:UpdateItem"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": [
+                                {
+                                  "Fn::GetAtt": [
+                                    "ChatHistoryTableA22BA13C",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::GetAtt": [
+                                    "LessonsTableA5C40CCF",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::GetAtt": [
+                                    "MicroLessonsTable9D50E5AF",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::GetAtt": [
+                                    "QuizzesTableEED0CE4A",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::GetAtt": [
+                                    "UserEngagementTableC354F7C0",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::GetAtt": [
+                                    "UsersTable9725E9C8",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "ChatHistoryTableA22BA13C",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/index/*"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "LessonsTableA5C40CCF",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/index/*"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "MicroLessonsTable9D50E5AF",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/index/*"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "QuizzesTableEED0CE4A",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/index/*"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "UserEngagementTableC354F7C0",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/index/*"
+                                    ]
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "UsersTable9725E9C8",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/index/*"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "Action": [
+                                "cognito-idp:AdminCreateUser",
+                                "cognito-idp:AdminGetUser",
+                                "cognito-idp:AdminInitiateAuth",
+                                "cognito-idp:AdminSetUserPassword",
+                                "cognito-idp:AdminUpdateUserAttributes"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": {
+                                "Fn::GetAtt": [
+                                  "UserPool6BA7E5F2",
+                                  "Arn"
+                                ]
+                              }
+                            },
+                            {
+                              "Action": [
+                                "s3:DeleteObject",
+                                "s3:GetObject",
+                                "s3:PutObject"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": {
+                                "Fn::Join": [
+                                  "",
+                                  [
+                                    {
+                                      "Fn::GetAtt": [
+                                        "ContentBucket52D4B12C",
+                                        "Arn"
+                                      ]
+                                    },
+                                    "/*"
+                                  ]
+                                ]
+                              }
+                            },
+                            {
+                              "Action": [
+                                "bedrock-agent-runtime:InvokeAgent",
+                                "bedrock-agent-runtime:Retrieve",
+                                "bedrock-agent-runtime:RetrieveAndGenerate",
+                                "bedrock:ApplyGuardrail",
+                                "bedrock:GetGuardrail",
+                                "bedrock:InvokeModel",
+                                "bedrock:InvokeModelWithResponseStream",
+                                "bedrock:ListGuardrails",
+                                "cloudwatch:PutMetricData",
+                                "codewhisperer:GenerateRecommendations",
+                                "codewhisperer:GetRecommendations",
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents",
+                                "logs:PutMetricFilter",
+                                "logs:PutRetentionPolicy",
+                                "qbusiness:Chat",
+                                "qbusiness:ChatSync",
+                                "qbusiness:GetApplication",
+                                "qbusiness:GetConversation",
+                                "qbusiness:ListApplications",
+                                "qbusiness:ListConversations",
+                                "qbusiness:ListMessages",
+                                "textract:AnalyzeDocument",
+                                "textract:DetectDocumentText",
+                                "textract:GetDocumentTextDetection",
+                                "textract:StartDocumentTextDetection",
+                                "transcribe:DeleteTranscriptionJob",
+                                "transcribe:GetTranscriptionJob",
+                                "transcribe:StartTranscriptionJob"
+                              ],
+                              "Effect": "Allow",
+                              "Resource": "*"
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        },
+                        "policyName": "LambdaExecutionRoleDefaultPolicy6D69732F",
+                        "roles": [
+                          {
+                            "Ref": "LambdaExecutionRoleD5C26073"
+                          }
+                        ]
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_iam.CfnPolicy",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.Policy",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_iam.Role",
+              "version": "2.110.0"
+            }
+          },
+          "ApiLambda": {
+            "id": "ApiLambda",
+            "path": "SnapStudyStack/ApiLambda",
+            "children": {
+              "Code": {
+                "id": "Code",
+                "path": "SnapStudyStack/ApiLambda/Code",
+                "children": {
+                  "Stage": {
+                    "id": "Stage",
+                    "path": "SnapStudyStack/ApiLambda/Code/Stage",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.AssetStaging",
+                      "version": "2.110.0"
+                    }
+                  },
+                  "AssetBucket": {
+                    "id": "AssetBucket",
+                    "path": "SnapStudyStack/ApiLambda/Code/AssetBucket",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_s3.BucketBase",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3_assets.Asset",
+                  "version": "2.110.0"
+                }
+              },
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/ApiLambda/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::Lambda::Function",
+                  "aws:cdk:cloudformation:props": {
+                    "code": {
+                      "s3Bucket": {
+                        "Fn::Sub": "cdk-hnb659fds-assets-${AWS::AccountId}-us-east-1"
+                      },
+                      "s3Key": "42297d8d0c48be2cd37ee6cd8d3275a617ec9bcc88c3ee65aa8266bc3f59d687.zip"
+                    },
+                    "environment": {
+                      "variables": {
+                        "USERS_TABLE": {
+                          "Ref": "UsersTable9725E9C8"
+                        },
+                        "LESSONS_TABLE": {
+                          "Ref": "LessonsTableA5C40CCF"
+                        },
+                        "MICRO_LESSONS_TABLE": {
+                          "Ref": "MicroLessonsTable9D50E5AF"
+                        },
+                        "QUIZZES_TABLE": {
+                          "Ref": "QuizzesTableEED0CE4A"
+                        },
+                        "USER_ENGAGEMENT_TABLE": {
+                          "Ref": "UserEngagementTableC354F7C0"
+                        },
+                        "CHAT_HISTORY_TABLE": {
+                          "Ref": "ChatHistoryTableA22BA13C"
+                        },
+                        "CONTENT_BUCKET": {
+                          "Ref": "ContentBucket52D4B12C"
+                        },
+                        "USER_POOL_ID": {
+                          "Ref": "UserPool6BA7E5F2"
+                        },
+                        "USER_POOL_CLIENT_ID": {
+                          "Ref": "UserPoolClient2F5918F7"
+                        },
+                        "REGION": "us-east-1"
+                      }
+                    },
+                    "handler": "api.main.handler",
+                    "memorySize": 512,
+                    "role": {
+                      "Fn::GetAtt": [
+                        "LambdaExecutionRoleD5C26073",
+                        "Arn"
+                      ]
+                    },
+                    "runtime": "python3.11",
+                    "timeout": 30
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_lambda.CfnFunction",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_lambda.Function",
+              "version": "2.110.0"
+            }
+          },
+          "RestApi": {
+            "id": "RestApi",
+            "path": "SnapStudyStack/RestApi",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/RestApi/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::ApiGateway::RestApi",
+                  "aws:cdk:cloudformation:props": {
+                    "description": "REST API for SnapStudy platform",
+                    "endpointConfiguration": {
+                      "types": [
+                        "REGIONAL"
+                      ]
+                    },
+                    "name": "SnapStudy-RestApi"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_apigateway.CfnRestApi",
+                  "version": "2.110.0"
+                }
+              },
+              "CloudWatchRole": {
+                "id": "CloudWatchRole",
+                "path": "SnapStudyStack/RestApi/CloudWatchRole",
+                "children": {
+                  "ImportCloudWatchRole": {
+                    "id": "ImportCloudWatchRole",
+                    "path": "SnapStudyStack/RestApi/CloudWatchRole/ImportCloudWatchRole",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.Resource",
+                      "version": "2.110.0"
+                    }
+                  },
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "SnapStudyStack/RestApi/CloudWatchRole/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::IAM::Role",
+                      "aws:cdk:cloudformation:props": {
+                        "assumeRolePolicyDocument": {
+                          "Statement": [
+                            {
+                              "Action": "sts:AssumeRole",
+                              "Effect": "Allow",
+                              "Principal": {
+                                "Service": "apigateway.amazonaws.com"
+                              }
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        },
+                        "managedPolicyArns": [
+                          {
+                            "Fn::Join": [
+                              "",
+                              [
+                                "arn:",
+                                {
+                                  "Ref": "AWS::Partition"
+                                },
+                                ":iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+                              ]
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_iam.CfnRole",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_iam.Role",
+                  "version": "2.110.0"
+                }
+              },
+              "Account": {
+                "id": "Account",
+                "path": "SnapStudyStack/RestApi/Account",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::ApiGateway::Account",
+                  "aws:cdk:cloudformation:props": {
+                    "cloudWatchRoleArn": {
+                      "Fn::GetAtt": [
+                        "RestApiCloudWatchRoleE3ED6605",
+                        "Arn"
+                      ]
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_apigateway.CfnAccount",
+                  "version": "2.110.0"
+                }
+              },
+              "Deployment": {
+                "id": "Deployment",
+                "path": "SnapStudyStack/RestApi/Deployment",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "SnapStudyStack/RestApi/Deployment/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::ApiGateway::Deployment",
+                      "aws:cdk:cloudformation:props": {
+                        "description": "REST API for SnapStudy platform",
+                        "restApiId": {
+                          "Ref": "RestApi0C43BF4B"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_apigateway.CfnDeployment",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_apigateway.Deployment",
+                  "version": "2.110.0"
+                }
+              },
+              "DeploymentStage.prod": {
+                "id": "DeploymentStage.prod",
+                "path": "SnapStudyStack/RestApi/DeploymentStage.prod",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "SnapStudyStack/RestApi/DeploymentStage.prod/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::ApiGateway::Stage",
+                      "aws:cdk:cloudformation:props": {
+                        "deploymentId": {
+                          "Ref": "RestApiDeployment180EC503687a651dba7dbc4fb4bd8c437e4eeb0b"
+                        },
+                        "methodSettings": [
+                          {
+                            "httpMethod": "*",
+                            "resourcePath": "/*",
+                            "dataTraceEnabled": true,
+                            "loggingLevel": "INFO",
+                            "metricsEnabled": true
+                          }
+                        ],
+                        "restApiId": {
+                          "Ref": "RestApi0C43BF4B"
+                        },
+                        "stageName": "prod"
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_apigateway.CfnStage",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_apigateway.Stage",
+                  "version": "2.110.0"
+                }
+              },
+              "Endpoint": {
+                "id": "Endpoint",
+                "path": "SnapStudyStack/RestApi/Endpoint",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnOutput",
+                  "version": "2.110.0"
+                }
+              },
+              "Default": {
+                "id": "Default",
+                "path": "SnapStudyStack/RestApi/Default",
+                "children": {
+                  "OPTIONS": {
+                    "id": "OPTIONS",
+                    "path": "SnapStudyStack/RestApi/Default/OPTIONS",
+                    "children": {
+                      "Resource": {
+                        "id": "Resource",
+                        "path": "SnapStudyStack/RestApi/Default/OPTIONS/Resource",
+                        "attributes": {
+                          "aws:cdk:cloudformation:type": "AWS::ApiGateway::Method",
+                          "aws:cdk:cloudformation:props": {
+                            "apiKeyRequired": false,
+                            "authorizationType": "NONE",
+                            "httpMethod": "OPTIONS",
+                            "integration": {
+                              "type": "MOCK",
+                              "requestTemplates": {
+                                "application/json": "{ statusCode: 200 }"
+                              },
+                              "integrationResponses": [
+                                {
+                                  "statusCode": "204",
+                                  "responseParameters": {
+                                    "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                                    "method.response.header.Access-Control-Allow-Origin": "'*'",
+                                    "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+                                  }
+                                }
+                              ]
+                            },
+                            "methodResponses": [
+                              {
+                                "statusCode": "204",
+                                "responseParameters": {
+                                  "method.response.header.Access-Control-Allow-Headers": true,
+                                  "method.response.header.Access-Control-Allow-Origin": true,
+                                  "method.response.header.Access-Control-Allow-Methods": true
+                                }
+                              }
+                            ],
+                            "resourceId": {
+                              "Fn::GetAtt": [
+                                "RestApi0C43BF4B",
+                                "RootResourceId"
+                              ]
+                            },
+                            "restApiId": {
+                              "Ref": "RestApi0C43BF4B"
+                            }
+                          }
+                        },
+                        "constructInfo": {
+                          "fqn": "aws-cdk-lib.aws_apigateway.CfnMethod",
+                          "version": "2.110.0"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_apigateway.Method",
+                      "version": "2.110.0"
+                    }
+                  },
+                  "{proxy+}": {
+                    "id": "{proxy+}",
+                    "path": "SnapStudyStack/RestApi/Default/{proxy+}",
+                    "children": {
+                      "Resource": {
+                        "id": "Resource",
+                        "path": "SnapStudyStack/RestApi/Default/{proxy+}/Resource",
+                        "attributes": {
+                          "aws:cdk:cloudformation:type": "AWS::ApiGateway::Resource",
+                          "aws:cdk:cloudformation:props": {
+                            "parentId": {
+                              "Fn::GetAtt": [
+                                "RestApi0C43BF4B",
+                                "RootResourceId"
+                              ]
+                            },
+                            "pathPart": "{proxy+}",
+                            "restApiId": {
+                              "Ref": "RestApi0C43BF4B"
+                            }
+                          }
+                        },
+                        "constructInfo": {
+                          "fqn": "aws-cdk-lib.aws_apigateway.CfnResource",
+                          "version": "2.110.0"
+                        }
+                      },
+                      "OPTIONS": {
+                        "id": "OPTIONS",
+                        "path": "SnapStudyStack/RestApi/Default/{proxy+}/OPTIONS",
+                        "children": {
+                          "Resource": {
+                            "id": "Resource",
+                            "path": "SnapStudyStack/RestApi/Default/{proxy+}/OPTIONS/Resource",
+                            "attributes": {
+                              "aws:cdk:cloudformation:type": "AWS::ApiGateway::Method",
+                              "aws:cdk:cloudformation:props": {
+                                "apiKeyRequired": false,
+                                "authorizationType": "NONE",
+                                "httpMethod": "OPTIONS",
+                                "integration": {
+                                  "type": "MOCK",
+                                  "requestTemplates": {
+                                    "application/json": "{ statusCode: 200 }"
+                                  },
+                                  "integrationResponses": [
+                                    {
+                                      "statusCode": "204",
+                                      "responseParameters": {
+                                        "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                                        "method.response.header.Access-Control-Allow-Origin": "'*'",
+                                        "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET,PUT,POST,DELETE,PATCH,HEAD'"
+                                      }
+                                    }
+                                  ]
+                                },
+                                "methodResponses": [
+                                  {
+                                    "statusCode": "204",
+                                    "responseParameters": {
+                                      "method.response.header.Access-Control-Allow-Headers": true,
+                                      "method.response.header.Access-Control-Allow-Origin": true,
+                                      "method.response.header.Access-Control-Allow-Methods": true
+                                    }
+                                  }
+                                ],
+                                "resourceId": {
+                                  "Ref": "RestApiproxyC95856DD"
+                                },
+                                "restApiId": {
+                                  "Ref": "RestApi0C43BF4B"
+                                }
+                              }
+                            },
+                            "constructInfo": {
+                              "fqn": "aws-cdk-lib.aws_apigateway.CfnMethod",
+                              "version": "2.110.0"
+                            }
+                          }
+                        },
+                        "constructInfo": {
+                          "fqn": "aws-cdk-lib.aws_apigateway.Method",
+                          "version": "2.110.0"
+                        }
+                      },
+                      "ANY": {
+                        "id": "ANY",
+                        "path": "SnapStudyStack/RestApi/Default/{proxy+}/ANY",
+                        "children": {
+                          "ApiPermission.SnapStudyStackRestApiFED3ECC2.ANY..{proxy+}": {
+                            "id": "ApiPermission.SnapStudyStackRestApiFED3ECC2.ANY..{proxy+}",
+                            "path": "SnapStudyStack/RestApi/Default/{proxy+}/ANY/ApiPermission.SnapStudyStackRestApiFED3ECC2.ANY..{proxy+}",
+                            "attributes": {
+                              "aws:cdk:cloudformation:type": "AWS::Lambda::Permission",
+                              "aws:cdk:cloudformation:props": {
+                                "action": "lambda:InvokeFunction",
+                                "functionName": {
+                                  "Fn::GetAtt": [
+                                    "ApiLambda91D2282D",
+                                    "Arn"
+                                  ]
+                                },
+                                "principal": "apigateway.amazonaws.com",
+                                "sourceArn": {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      "arn:aws:execute-api:us-east-1:",
+                                      {
+                                        "Ref": "AWS::AccountId"
+                                      },
+                                      ":",
+                                      {
+                                        "Ref": "RestApi0C43BF4B"
+                                      },
+                                      "/",
+                                      {
+                                        "Ref": "RestApiDeploymentStageprod3855DE66"
+                                      },
+                                      "/*/*"
+                                    ]
+                                  ]
+                                }
+                              }
+                            },
+                            "constructInfo": {
+                              "fqn": "aws-cdk-lib.aws_lambda.CfnPermission",
+                              "version": "2.110.0"
+                            }
+                          },
+                          "ApiPermission.Test.SnapStudyStackRestApiFED3ECC2.ANY..{proxy+}": {
+                            "id": "ApiPermission.Test.SnapStudyStackRestApiFED3ECC2.ANY..{proxy+}",
+                            "path": "SnapStudyStack/RestApi/Default/{proxy+}/ANY/ApiPermission.Test.SnapStudyStackRestApiFED3ECC2.ANY..{proxy+}",
+                            "attributes": {
+                              "aws:cdk:cloudformation:type": "AWS::Lambda::Permission",
+                              "aws:cdk:cloudformation:props": {
+                                "action": "lambda:InvokeFunction",
+                                "functionName": {
+                                  "Fn::GetAtt": [
+                                    "ApiLambda91D2282D",
+                                    "Arn"
+                                  ]
+                                },
+                                "principal": "apigateway.amazonaws.com",
+                                "sourceArn": {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      "arn:aws:execute-api:us-east-1:",
+                                      {
+                                        "Ref": "AWS::AccountId"
+                                      },
+                                      ":",
+                                      {
+                                        "Ref": "RestApi0C43BF4B"
+                                      },
+                                      "/test-invoke-stage/*/*"
+                                    ]
+                                  ]
+                                }
+                              }
+                            },
+                            "constructInfo": {
+                              "fqn": "aws-cdk-lib.aws_lambda.CfnPermission",
+                              "version": "2.110.0"
+                            }
+                          },
+                          "Resource": {
+                            "id": "Resource",
+                            "path": "SnapStudyStack/RestApi/Default/{proxy+}/ANY/Resource",
+                            "attributes": {
+                              "aws:cdk:cloudformation:type": "AWS::ApiGateway::Method",
+                              "aws:cdk:cloudformation:props": {
+                                "authorizationType": "NONE",
+                                "httpMethod": "ANY",
+                                "integration": {
+                                  "type": "AWS_PROXY",
+                                  "uri": {
+                                    "Fn::Join": [
+                                      "",
+                                      [
+                                        "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/",
+                                        {
+                                          "Fn::GetAtt": [
+                                            "ApiLambda91D2282D",
+                                            "Arn"
+                                          ]
+                                        },
+                                        "/invocations"
+                                      ]
+                                    ]
+                                  },
+                                  "integrationHttpMethod": "POST"
+                                },
+                                "resourceId": {
+                                  "Ref": "RestApiproxyC95856DD"
+                                },
+                                "restApiId": {
+                                  "Ref": "RestApi0C43BF4B"
+                                }
+                              }
+                            },
+                            "constructInfo": {
+                              "fqn": "aws-cdk-lib.aws_apigateway.CfnMethod",
+                              "version": "2.110.0"
+                            }
+                          }
+                        },
+                        "constructInfo": {
+                          "fqn": "aws-cdk-lib.aws_apigateway.Method",
+                          "version": "2.110.0"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_apigateway.ProxyResource",
+                      "version": "2.110.0"
+                    }
+                  },
+                  "ANY": {
+                    "id": "ANY",
+                    "path": "SnapStudyStack/RestApi/Default/ANY",
+                    "children": {
+                      "Resource": {
+                        "id": "Resource",
+                        "path": "SnapStudyStack/RestApi/Default/ANY/Resource",
+                        "attributes": {
+                          "aws:cdk:cloudformation:type": "AWS::ApiGateway::Method",
+                          "aws:cdk:cloudformation:props": {
+                            "authorizationType": "NONE",
+                            "httpMethod": "ANY",
+                            "integration": {
+                              "type": "MOCK"
+                            },
+                            "resourceId": {
+                              "Fn::GetAtt": [
+                                "RestApi0C43BF4B",
+                                "RootResourceId"
+                              ]
+                            },
+                            "restApiId": {
+                              "Ref": "RestApi0C43BF4B"
+                            }
+                          }
+                        },
+                        "constructInfo": {
+                          "fqn": "aws-cdk-lib.aws_apigateway.CfnMethod",
+                          "version": "2.110.0"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_apigateway.Method",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_apigateway.ResourceBase",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_apigateway.RestApi",
+              "version": "2.110.0"
+            }
+          },
+          "ApiWafAcl": {
+            "id": "ApiWafAcl",
+            "path": "SnapStudyStack/ApiWafAcl",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::WAFv2::WebACL",
+              "aws:cdk:cloudformation:props": {
+                "defaultAction": {
+                  "allow": {}
+                },
+                "name": "SnapStudyApiWaf",
+                "rules": [
+                  {
+                    "name": "AWSManagedRulesCommonRuleSet",
+                    "priority": 1,
+                    "statement": {
+                      "managedRuleGroupStatement": {
+                        "name": "AWSManagedRulesCommonRuleSet",
+                        "vendorName": "AWS"
+                      }
+                    },
+                    "visibilityConfig": {
+                      "cloudWatchMetricsEnabled": true,
+                      "metricName": "AWSManagedRulesCommonRuleSetMetric",
+                      "sampledRequestsEnabled": true
+                    },
+                    "overrideAction": {
+                      "none": {}
+                    }
+                  },
+                  {
+                    "name": "AWSManagedRulesKnownBadInputsRuleSet",
+                    "priority": 2,
+                    "statement": {
+                      "managedRuleGroupStatement": {
+                        "name": "AWSManagedRulesKnownBadInputsRuleSet",
+                        "vendorName": "AWS"
+                      }
+                    },
+                    "visibilityConfig": {
+                      "cloudWatchMetricsEnabled": true,
+                      "metricName": "AWSManagedRulesKnownBadInputsRuleSetMetric",
+                      "sampledRequestsEnabled": true
+                    },
+                    "overrideAction": {
+                      "none": {}
+                    }
+                  },
+                  {
+                    "name": "RateLimitRule",
+                    "priority": 3,
+                    "statement": {
+                      "rateBasedStatement": {
+                        "aggregateKeyType": "IP",
+                        "limit": 1000
+                      }
+                    },
+                    "visibilityConfig": {
+                      "cloudWatchMetricsEnabled": true,
+                      "metricName": "RateLimitRuleMetric",
+                      "sampledRequestsEnabled": true
+                    },
+                    "action": {
+                      "block": {
+                        "customResponse": {
+                          "responseCode": 429
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "name": "AWSManagedRulesSQLiRuleSet",
+                    "priority": 4,
+                    "statement": {
+                      "managedRuleGroupStatement": {
+                        "name": "AWSManagedRulesSQLiRuleSet",
+                        "vendorName": "AWS"
+                      }
+                    },
+                    "visibilityConfig": {
+                      "cloudWatchMetricsEnabled": true,
+                      "metricName": "AWSManagedRulesSQLiRuleSetMetric",
+                      "sampledRequestsEnabled": true
+                    },
+                    "overrideAction": {
+                      "none": {}
+                    }
+                  }
+                ],
+                "scope": "REGIONAL",
+                "visibilityConfig": {
+                  "cloudWatchMetricsEnabled": true,
+                  "metricName": "SnapStudyWafMetrics",
+                  "sampledRequestsEnabled": true
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_wafv2.CfnWebACL",
+              "version": "2.110.0"
+            }
+          },
+          "ApiWafAssociation": {
+            "id": "ApiWafAssociation",
+            "path": "SnapStudyStack/ApiWafAssociation",
+            "attributes": {
+              "aws:cdk:cloudformation:type": "AWS::WAFv2::WebACLAssociation",
+              "aws:cdk:cloudformation:props": {
+                "resourceArn": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:aws:apigateway:us-east-1::/restapis/",
+                      {
+                        "Ref": "RestApi0C43BF4B"
+                      },
+                      "/stages/prod"
+                    ]
+                  ]
+                },
+                "webAclArn": {
+                  "Fn::GetAtt": [
+                    "ApiWafAcl",
+                    "Arn"
+                  ]
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_wafv2.CfnWebACLAssociation",
+              "version": "2.110.0"
+            }
+          },
+          "SnapStudyDashboard": {
+            "id": "SnapStudyDashboard",
+            "path": "SnapStudyStack/SnapStudyDashboard",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/SnapStudyDashboard/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudWatch::Dashboard",
+                  "aws:cdk:cloudformation:props": {
+                    "dashboardBody": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "{\"widgets\":[{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":0,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Lambda Invocations\",\"region\":\"",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          "\",\"metrics\":[[\"AWS/Lambda\",\"Invocations\",\"FunctionName\",\"",
+                          {
+                            "Ref": "ApiLambda91D2282D"
+                          },
+                          "\",{\"stat\":\"Sum\"}],[\"AWS/Lambda\",\"Errors\",\"FunctionName\",\"",
+                          {
+                            "Ref": "ApiLambda91D2282D"
+                          },
+                          "\",{\"stat\":\"Sum\"}],[\"AWS/Lambda\",\"Throttles\",\"FunctionName\",\"",
+                          {
+                            "Ref": "ApiLambda91D2282D"
+                          },
+                          "\",{\"stat\":\"Sum\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":0,\"properties\":{\"view\":\"timeSeries\",\"title\":\"Lambda Duration\",\"region\":\"",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          "\",\"metrics\":[[\"AWS/Lambda\",\"Duration\",\"FunctionName\",\"",
+                          {
+                            "Ref": "ApiLambda91D2282D"
+                          },
+                          "\"],[\"AWS/Lambda\",\"Duration\",\"FunctionName\",\"",
+                          {
+                            "Ref": "ApiLambda91D2282D"
+                          },
+                          "\",{\"stat\":\"Maximum\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":6,\"properties\":{\"view\":\"timeSeries\",\"title\":\"API Gateway Requests\",\"region\":\"",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          "\",\"metrics\":[[\"AWS/ApiGateway\",\"Count\",\"ApiName\",\"SnapStudy-RestApi\",{\"stat\":\"Sum\"}],[\"AWS/ApiGateway\",\"4XXError\",\"ApiName\",\"SnapStudy-RestApi\",{\"stat\":\"Sum\"}],[\"AWS/ApiGateway\",\"5XXError\",\"ApiName\",\"SnapStudy-RestApi\",{\"stat\":\"Sum\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":6,\"properties\":{\"view\":\"timeSeries\",\"title\":\"API Latency\",\"region\":\"",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          "\",\"metrics\":[[\"AWS/ApiGateway\",\"Latency\",\"ApiName\",\"SnapStudy-RestApi\"]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":0,\"y\":12,\"properties\":{\"view\":\"timeSeries\",\"title\":\"DynamoDB Read/Write Units\",\"region\":\"",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          "\",\"metrics\":[[\"AWS/DynamoDB\",\"ConsumedReadCapacityUnits\",\"TableName\",\"",
+                          {
+                            "Ref": "UsersTable9725E9C8"
+                          },
+                          "\",{\"stat\":\"Sum\"}],[\"AWS/DynamoDB\",\"ConsumedWriteCapacityUnits\",\"TableName\",\"",
+                          {
+                            "Ref": "UsersTable9725E9C8"
+                          },
+                          "\",{\"stat\":\"Sum\"}]],\"yAxis\":{}}},{\"type\":\"metric\",\"width\":12,\"height\":6,\"x\":12,\"y\":12,\"properties\":{\"view\":\"timeSeries\",\"title\":\"DynamoDB Throttles\",\"region\":\"",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          "\",\"metrics\":[[\"AWS/DynamoDB\",\"UserErrors\",{\"stat\":\"Sum\"}]],\"yAxis\":{}}}]}"
+                        ]
+                      ]
+                    },
+                    "dashboardName": "SnapStudy-Metrics"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudwatch.CfnDashboard",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudwatch.Dashboard",
+              "version": "2.110.0"
+            }
+          },
+          "LambdaErrorAlarm": {
+            "id": "LambdaErrorAlarm",
+            "path": "SnapStudyStack/LambdaErrorAlarm",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/LambdaErrorAlarm/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudWatch::Alarm",
+                  "aws:cdk:cloudformation:props": {
+                    "alarmDescription": "Alert when Lambda function has errors",
+                    "alarmName": "SnapStudy-Lambda-Errors",
+                    "comparisonOperator": "GreaterThanThreshold",
+                    "datapointsToAlarm": 1,
+                    "dimensions": [
+                      {
+                        "name": "FunctionName",
+                        "value": {
+                          "Ref": "ApiLambda91D2282D"
+                        }
+                      }
+                    ],
+                    "evaluationPeriods": 1,
+                    "metricName": "Errors",
+                    "namespace": "AWS/Lambda",
+                    "period": 300,
+                    "statistic": "Sum",
+                    "threshold": 10,
+                    "treatMissingData": "notBreaching"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudwatch.CfnAlarm",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudwatch.Alarm",
+              "version": "2.110.0"
+            }
+          },
+          "Api5XXAlarm": {
+            "id": "Api5XXAlarm",
+            "path": "SnapStudyStack/Api5XXAlarm",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/Api5XXAlarm/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudWatch::Alarm",
+                  "aws:cdk:cloudformation:props": {
+                    "alarmDescription": "Alert when API has 5XX errors",
+                    "alarmName": "SnapStudy-API-5XX-Errors",
+                    "comparisonOperator": "GreaterThanThreshold",
+                    "datapointsToAlarm": 1,
+                    "dimensions": [
+                      {
+                        "name": "ApiName",
+                        "value": "SnapStudy-RestApi"
+                      }
+                    ],
+                    "evaluationPeriods": 1,
+                    "metricName": "5XXError",
+                    "namespace": "AWS/ApiGateway",
+                    "period": 300,
+                    "statistic": "Sum",
+                    "threshold": 5,
+                    "treatMissingData": "notBreaching"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudwatch.CfnAlarm",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudwatch.Alarm",
+              "version": "2.110.0"
+            }
+          },
+          "LambdaDurationAlarm": {
+            "id": "LambdaDurationAlarm",
+            "path": "SnapStudyStack/LambdaDurationAlarm",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/LambdaDurationAlarm/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::CloudWatch::Alarm",
+                  "aws:cdk:cloudformation:props": {
+                    "alarmDescription": "Alert when Lambda execution is slow",
+                    "alarmName": "SnapStudy-Lambda-Duration",
+                    "comparisonOperator": "GreaterThanThreshold",
+                    "datapointsToAlarm": 2,
+                    "dimensions": [
+                      {
+                        "name": "FunctionName",
+                        "value": {
+                          "Ref": "ApiLambda91D2282D"
+                        }
+                      }
+                    ],
+                    "evaluationPeriods": 2,
+                    "metricName": "Duration",
+                    "namespace": "AWS/Lambda",
+                    "period": 300,
+                    "statistic": "Average",
+                    "threshold": 25000,
+                    "treatMissingData": "notBreaching"
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_cloudwatch.CfnAlarm",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_cloudwatch.Alarm",
+              "version": "2.110.0"
+            }
+          },
+          "FrontendBucket": {
+            "id": "FrontendBucket",
+            "path": "SnapStudyStack/FrontendBucket",
+            "children": {
+              "Resource": {
+                "id": "Resource",
+                "path": "SnapStudyStack/FrontendBucket/Resource",
+                "attributes": {
+                  "aws:cdk:cloudformation:type": "AWS::S3::Bucket",
+                  "aws:cdk:cloudformation:props": {
+                    "bucketName": {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "snapstudy-frontend-",
+                          {
+                            "Ref": "AWS::AccountId"
+                          },
+                          "-us-east-1"
+                        ]
+                      ]
+                    },
+                    "corsConfiguration": {
+                      "corsRules": [
+                        {
+                          "maxAge": 3000,
+                          "allowedHeaders": [
+                            "*"
+                          ],
+                          "allowedMethods": [
+                            "GET",
+                            "HEAD"
+                          ],
+                          "allowedOrigins": [
+                            "*"
+                          ]
+                        }
+                      ]
+                    },
+                    "publicAccessBlockConfiguration": {
+                      "blockPublicAcls": false,
+                      "blockPublicPolicy": false,
+                      "ignorePublicAcls": false,
+                      "restrictPublicBuckets": false
+                    },
+                    "tags": [
+                      {
+                        "key": "aws-cdk:auto-delete-objects",
+                        "value": "true"
+                      }
+                    ],
+                    "websiteConfiguration": {
+                      "indexDocument": "index.html",
+                      "errorDocument": "index.html"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.CfnBucket",
+                  "version": "2.110.0"
+                }
+              },
+              "Policy": {
+                "id": "Policy",
+                "path": "SnapStudyStack/FrontendBucket/Policy",
+                "children": {
+                  "Resource": {
+                    "id": "Resource",
+                    "path": "SnapStudyStack/FrontendBucket/Policy/Resource",
+                    "attributes": {
+                      "aws:cdk:cloudformation:type": "AWS::S3::BucketPolicy",
+                      "aws:cdk:cloudformation:props": {
+                        "bucket": {
+                          "Ref": "FrontendBucketEFE2E19C"
+                        },
+                        "policyDocument": {
+                          "Statement": [
+                            {
+                              "Action": "s3:GetObject",
+                              "Effect": "Allow",
+                              "Principal": {
+                                "AWS": "*"
+                              },
+                              "Resource": {
+                                "Fn::Join": [
+                                  "",
+                                  [
+                                    {
+                                      "Fn::GetAtt": [
+                                        "FrontendBucketEFE2E19C",
+                                        "Arn"
+                                      ]
+                                    },
+                                    "/*"
+                                  ]
+                                ]
+                              }
+                            },
+                            {
+                              "Action": [
+                                "s3:DeleteObject*",
+                                "s3:GetBucket*",
+                                "s3:List*",
+                                "s3:PutBucketPolicy"
+                              ],
+                              "Effect": "Allow",
+                              "Principal": {
+                                "AWS": {
+                                  "Fn::GetAtt": [
+                                    "CustomS3AutoDeleteObjectsCustomResourceProviderRole3B1BD092",
+                                    "Arn"
+                                  ]
+                                }
+                              },
+                              "Resource": [
+                                {
+                                  "Fn::GetAtt": [
+                                    "FrontendBucketEFE2E19C",
+                                    "Arn"
+                                  ]
+                                },
+                                {
+                                  "Fn::Join": [
+                                    "",
+                                    [
+                                      {
+                                        "Fn::GetAtt": [
+                                          "FrontendBucketEFE2E19C",
+                                          "Arn"
+                                        ]
+                                      },
+                                      "/*"
+                                    ]
+                                  ]
+                                }
+                              ]
+                            }
+                          ],
+                          "Version": "2012-10-17"
+                        }
+                      }
+                    },
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.aws_s3.CfnBucketPolicy",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.aws_s3.BucketPolicy",
+                  "version": "2.110.0"
+                }
+              },
+              "AutoDeleteObjectsCustomResource": {
+                "id": "AutoDeleteObjectsCustomResource",
+                "path": "SnapStudyStack/FrontendBucket/AutoDeleteObjectsCustomResource",
+                "children": {
+                  "Default": {
+                    "id": "Default",
+                    "path": "SnapStudyStack/FrontendBucket/AutoDeleteObjectsCustomResource/Default",
+                    "constructInfo": {
+                      "fqn": "aws-cdk-lib.CfnResource",
+                      "version": "2.110.0"
+                    }
+                  }
+                },
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CustomResource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.aws_s3.Bucket",
+              "version": "2.110.0"
+            }
+          },
+          "Custom::S3AutoDeleteObjectsCustomResourceProvider": {
+            "id": "Custom::S3AutoDeleteObjectsCustomResourceProvider",
+            "path": "SnapStudyStack/Custom::S3AutoDeleteObjectsCustomResourceProvider",
+            "children": {
+              "Staging": {
+                "id": "Staging",
+                "path": "SnapStudyStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Staging",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.AssetStaging",
+                  "version": "2.110.0"
+                }
+              },
+              "Role": {
+                "id": "Role",
+                "path": "SnapStudyStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Role",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.110.0"
+                }
+              },
+              "Handler": {
+                "id": "Handler",
+                "path": "SnapStudyStack/Custom::S3AutoDeleteObjectsCustomResourceProvider/Handler",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CustomResourceProvider",
+              "version": "2.110.0"
+            }
+          },
+          "UserPoolId": {
+            "id": "UserPoolId",
+            "path": "SnapStudyStack/UserPoolId",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "UserPoolClientId": {
+            "id": "UserPoolClientId",
+            "path": "SnapStudyStack/UserPoolClientId",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "RestApiUrl": {
+            "id": "RestApiUrl",
+            "path": "SnapStudyStack/RestApiUrl",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "ContentBucketName": {
+            "id": "ContentBucketName",
+            "path": "SnapStudyStack/ContentBucketName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "UsersTableName": {
+            "id": "UsersTableName",
+            "path": "SnapStudyStack/UsersTableName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "LessonsTableName": {
+            "id": "LessonsTableName",
+            "path": "SnapStudyStack/LessonsTableName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "FrontendBucketName": {
+            "id": "FrontendBucketName",
+            "path": "SnapStudyStack/FrontendBucketName",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "FrontendUrl": {
+            "id": "FrontendUrl",
+            "path": "SnapStudyStack/FrontendUrl",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnOutput",
+              "version": "2.110.0"
+            }
+          },
+          "CDKMetadata": {
+            "id": "CDKMetadata",
+            "path": "SnapStudyStack/CDKMetadata",
+            "children": {
+              "Default": {
+                "id": "Default",
+                "path": "SnapStudyStack/CDKMetadata/Default",
+                "constructInfo": {
+                  "fqn": "aws-cdk-lib.CfnResource",
+                  "version": "2.110.0"
+                }
+              }
+            },
+            "constructInfo": {
+              "fqn": "constructs.Construct",
+              "version": "10.4.2"
+            }
+          },
+          "BootstrapVersion": {
+            "id": "BootstrapVersion",
+            "path": "SnapStudyStack/BootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnParameter",
+              "version": "2.110.0"
+            }
+          },
+          "CheckBootstrapVersion": {
+            "id": "CheckBootstrapVersion",
+            "path": "SnapStudyStack/CheckBootstrapVersion",
+            "constructInfo": {
+              "fqn": "aws-cdk-lib.CfnRule",
+              "version": "2.110.0"
+            }
+          }
+        },
+        "constructInfo": {
+          "fqn": "aws-cdk-lib.Stack",
+          "version": "2.110.0"
+        }
+      },
+      "Tree": {
+        "id": "Tree",
+        "path": "Tree",
+        "constructInfo": {
+          "fqn": "constructs.Construct",
+          "version": "10.4.2"
+        }
+      }
+    },
+    "constructInfo": {
+      "fqn": "aws-cdk-lib.App",
+      "version": "2.110.0"
+    }
+  }
+}

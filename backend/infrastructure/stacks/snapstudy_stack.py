@@ -14,7 +14,7 @@ from aws_cdk import (
     aws_logs as logs,
     aws_wafv2 as wafv2,
     aws_cloudwatch as cloudwatch,
-    aws_amplify_alpha as amplify,
+
     aws_s3_deployment as s3deploy,
 )
 from constructs import Construct
@@ -47,7 +47,7 @@ class SnapStudyStack(Stack):
         self.create_waf()
 
         # Create Bedrock Agents
-        self.create_bedrock_agents()
+        # self.create_bedrock_agents()  # Commented out - not available in this CDK version
 
         # Create CloudWatch Dashboard and Alarms
         self.create_monitoring()
@@ -511,7 +511,7 @@ class SnapStudyStack(Stack):
         self.api_lambda = lambda_.Function(
             self, "ApiLambda",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="src.api.main.handler",
+            handler="api.main.handler",
             code=lambda_.Code.from_asset("../src"),  # Points to backend/src
             role=lambda_role,
             timeout=Duration.seconds(30),
@@ -526,7 +526,7 @@ class SnapStudyStack(Stack):
                 "CONTENT_BUCKET": self.content_bucket.bucket_name,
                 "USER_POOL_ID": self.user_pool.user_pool_id,
                 "USER_POOL_CLIENT_ID": self.user_pool_client.user_pool_client_id,
-                "AWS_REGION": self.region
+                "REGION": self.region
             }
         )
 

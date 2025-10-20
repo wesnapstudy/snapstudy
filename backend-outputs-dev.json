@@ -1,0 +1,54 @@
+﻿[
+    {
+        "OutputKey":  "LessonsTableName",
+        "OutputValue":  "SnapStudy-Lessons",
+        "Description":  "Lessons DynamoDB Table Name",
+        "ExportName":  "SnapStudy-LessonsTableName"
+    },
+    {
+        "OutputKey":  "UserPoolClientId",
+        "OutputValue":  "aqf9rocf9l4m97kbsto2sgom7",
+        "Description":  "Cognito User Pool Client ID",
+        "ExportName":  "SnapStudy-UserPoolClientId"
+    },
+    {
+        "OutputKey":  "UserPoolId",
+        "OutputValue":  "us-east-1_OMxtuecKP",
+        "Description":  "Cognito User Pool ID",
+        "ExportName":  "SnapStudy-UserPoolId"
+    },
+    {
+        "OutputKey":  "UsersTableName",
+        "OutputValue":  "SnapStudy-Users",
+        "Description":  "Users DynamoDB Table Name",
+        "ExportName":  "SnapStudy-UsersTableName"
+    },
+    {
+        "OutputKey":  "FrontendBucketName",
+        "OutputValue":  "snapstudy-frontend-054037102331-us-east-1",
+        "Description":  "Frontend S3 Bucket Name",
+        "ExportName":  "SnapStudy-FrontendBucketName"
+    },
+    {
+        "OutputKey":  "ContentBucketName",
+        "OutputValue":  "snapstudy-content-054037102331-us-east-1",
+        "Description":  "S3 Content Bucket Name",
+        "ExportName":  "SnapStudy-ContentBucketName"
+    },
+    {
+        "OutputKey":  "RestApiEndpoint0551178A",
+        "OutputValue":  "https://hc3av6xdja.execute-api.us-east-1.amazonaws.com/prod/"
+    },
+    {
+        "OutputKey":  "FrontendUrl",
+        "OutputValue":  "http://snapstudy-frontend-054037102331-us-east-1.s3-website-us-east-1.amazonaws.com",
+        "Description":  "Frontend Website URL",
+        "ExportName":  "SnapStudy-FrontendUrl"
+    },
+    {
+        "OutputKey":  "RestApiUrl",
+        "OutputValue":  "https://hc3av6xdja.execute-api.us-east-1.amazonaws.com/prod/",
+        "Description":  "REST API Gateway URL",
+        "ExportName":  "SnapStudy-RestApiUrl"
+    }
+]
