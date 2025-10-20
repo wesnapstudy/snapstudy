@@ -76,3 +76,137 @@ export interface UserPreferences {
   auto_play_videos: boolean;
   playback_speed: number;
 }
+
+export interface Quiz {
+  quiz_id: string;
+  micro_lesson_id?: string;
+  lesson_id?: string;
+  questions: QuizQuestion[];
+  total_questions: number;
+  passing_score: number;
+  difficulty_level: string;
+  estimated_duration_minutes: number;
+  quiz_metadata: QuizMetadata;
+  instructions?: string;
+  hints_available?: boolean;
+}
+
+export interface QuizMetadata {
+  total_questions: number;
+  passing_score: number;
+  difficulty_level: string;
+  estimated_duration_minutes: number;
+  adaptive_features?: string[];
+}
+
+export interface QuizResults {
+  quiz_id: string;
+  overall_score: number;
+  total_questions: number;
+  correct_count: number;
+  time_spent_seconds: number;
+  question_results: QuestionResult[];
+  feedback?: string;
+  recommendations?: string[];
+  passed: boolean;
+}
+
+export interface QuestionResult {
+  question_id: string;
+  user_answer: string;
+  correct_answer: string;
+  is_correct: boolean;
+  score: number;
+  feedback: string;
+  suggestions?: string;
+}
+
+export interface QuizSubmission {
+  quiz_id: string;
+  answers: Record<string, string>;
+  time_spent_seconds: number;
+  engagement_metrics?: Record<string, any>;
+}
+
+export interface AnalyticsDashboard {
+  user_id: string;
+  generated_at: string;
+  metrics: UserMetrics;
+  learning_patterns: string[];
+  progress: ProgressMetrics;
+  concept_analytics: Record<string, ConceptAnalytics>;
+  retention: RetentionMetrics;
+  recommendations: Recommendation[];
+}
+
+export interface UserMetrics {
+  total_events: number;
+  lessons_completed: number;
+  quizzes_taken: number;
+  average_score: number;
+  total_time_spent_minutes: number;
+  chat_interactions: number;
+  content_uploads: number;
+  hints_requested: number;
+}
+
+export interface ProgressMetrics {
+  lessons_started: number;
+  lessons_completed: number;
+  completion_rate: number;
+  recent_activity: {
+    lessons_this_week: number;
+    quizzes_this_week: number;
+    total_events_this_week: number;
+  };
+}
+
+export interface ConceptAnalytics {
+  average_score: number;
+  recent_average: number;
+  attempts: number;
+  total_time_minutes: number;
+  difficulty_level: string;
+  trend: string;
+}
+
+export interface RetentionMetrics {
+  total_days_active: number;
+  current_streak: number;
+  longest_streak: number;
+  retention_rate: number;
+  consistency_score: number;
+  first_activity?: string;
+  last_activity?: string;
+  average_daily_events: number;
+}
+
+export interface Recommendation {
+  type: string;
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  action: string;
+}
+
+export interface LearningVelocity {
+  period_days: number;
+  lessons_completed: number;
+  quizzes_taken: number;
+  chat_interactions: number;
+  total_time_spent_minutes: number;
+  daily_averages: {
+    lessons: number;
+    quizzes: number;
+    time_minutes: number;
+  };
+  learning_pace: string;
+  activity_score: number;
+}
+
+export interface EngagementEvent {
+  event_type: string;
+  event_data: Record<string, any>;
+  session_id?: string;
+  timestamp?: string;
+}
