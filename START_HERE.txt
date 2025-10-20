@@ -25,15 +25,13 @@
 2. Run these commands:
 
    cd D:\repo\hackathon\study
-   .\deploy.ps1
+   .\deploy-complete.ps1
 
 3. Follow the prompts:
-   ✓ Enter AWS Access Key ID
-   ✓ Enter AWS Secret Key
-   ✓ Press Enter for region (us-east-1)
+   ✓ Confirm AWS Profile 'hackathon' is configured
    ✓ Enable Bedrock access (if prompted)
-   ✓ Wait 15 minutes for deployment
-   ✓ Done!
+   ✓ Wait 10-12 minutes for deployment
+   ✓ Done! (Both Backend + Frontend deployed)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -71,10 +69,10 @@ You just answer a few questions!
 ✅ Backend API: https://xxx.execute-api.us-east-1.amazonaws.com/prod/
 ✅ User Authentication: Cognito User Pool
 ✅ Database: 6 DynamoDB tables
-✅ Storage: S3 bucket
+✅ Storage: S3 bucket (content)
+✅ Frontend Website: Fully deployed React app on S3
 ✅ Monitoring: CloudWatch dashboard
 ✅ Security: AWS WAF protection
-✅ Frontend: React app (localhost:3000)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -83,13 +81,12 @@ You just answer a few questions!
 1. Test API:
    Invoke-RestMethod -Uri "https://YOUR-API-URL/health"
 
-2. View CloudWatch:
-   AWS Console → CloudWatch → Dashboards → SnapStudy-Metrics
+2. Open Frontend Website:
+   http://YOUR-FRONTEND-BUCKET.s3-website-us-east-1.amazonaws.com
+   (URL will be displayed after deployment)
 
-3. Run Frontend:
-   cd frontend
-   npm start
-   → Opens http://localhost:3000
+3. View CloudWatch:
+   AWS Console → CloudWatch → Dashboards → SnapStudy-Metrics
 
 4. Login with test user:
    Email: test@example.com
@@ -114,9 +111,9 @@ Full troubleshooting: See QUICK_DEPLOY.md
 Open PowerShell NOW and run:
 
    cd D:\repo\hackathon\study
-   .\deploy.ps1
+   .\deploy-complete.ps1
 
-The script will guide you through everything!
+The script will guide you through everything and deploy both backend and frontend!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

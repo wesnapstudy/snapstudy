@@ -65,14 +65,40 @@ try {
     Write-Success "AWS CDK installed"
 }
 
-# Step 2: AWS Credentials - IMPROVED DETECTION
+# Step 2: AWS Credentials - HACKATHON PROFILE CONFIGURATION
 Write-Step "Step 2: Configuring AWS Credentials"
 
-Write-Info "Testing AWS credentials..."
+Write-Info "Setting up Hackathon AWS profile..."
 
-# Try to get caller identity
+# Check if hackathon profile exists
+Write-Info "Checking for hackathon AWS profile..."
+$profiles = aws configure list-profiles 2>&1
+$profilesList = $profiles -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+
+if ($profilesList -notcontains "hackathon") {
+    Write-Error-Custom "Hackathon AWS profile not found"
+    Write-Info "Available profiles: $($profilesList -join ', ')"
+    Write-Info ""
+    Write-Info "Please create the hackathon profile first:"
+    Write-Info "  aws configure --profile hackathon"
+    Write-Info "  Enter your Hackathon Access Key ID"
+    Write-Info "  Enter your Hackathon Secret Access Key"
+    Write-Info "  Enter region: us-east-1"
+    Write-Info "  Enter output: json"
+    exit 1
+}
+
+Write-Success "Found hackathon profile"
+Write-Info "Available profiles: $($profilesList -join ', ')"
+
+# Set the hackathon AWS profile
+$env:AWS_PROFILE = "hackathon"
+Write-Success "Using AWS Profile: hackathon"
+
+# Try to get caller identity with hackathon profile
 $callerIdentity = $null
 try {
+    Write-Info "Testing hackathon profile credentials..."
     $callerIdentity = aws sts get-caller-identity 2>&1
 
     # Check if it's an error or valid JSON
@@ -87,42 +113,100 @@ try {
         $script:AWS_ACCOUNT_ID = $identity.Account
         $script:AWS_REGION = if ($env:AWS_REGION) { $env:AWS_REGION } else { "us-east-1" }
 
-        Write-Success "AWS credentials detected"
+        Write-Success "Hackathon AWS credentials detected"
         Write-Info "Account ID: $script:AWS_ACCOUNT_ID"
         Write-Info "Region: $script:AWS_REGION"
         Write-Info "User: $($identity.Arn)"
+        Write-Info "Profile: hackathon"
 
-        $continue = Read-Host "`nUse these credentials? (y/n)"
+        # Validate this is a hackathon account (you can add specific account ID check if known)
+        Write-Info "Validating hackathon account access..."
+        
+        $continue = Read-Host "`nUse these hackathon credentials for deployment? (y/n)"
         if ($continue -ne 'y' -and $continue -ne 'Y') {
-            Write-Info "Please configure different credentials:"
-            Write-Info "  aws configure"
+            Write-Info "Please configure different hackathon credentials:"
+            Write-Info "  aws configure --profile hackathon"
             exit 0
         }
     } else {
         throw "Invalid response from AWS"
     }
 } catch {
-    Write-Error-Custom "AWS credentials not working"
+    Write-Error-Custom "Hackathon AWS profile credentials not working"
     Write-Info "Error: $_"
     Write-Info ""
-    Write-Info "Please configure AWS credentials:"
-    Write-Info "  1. Run: aws configure"
-    Write-Info "  2. Enter your Access Key ID"
-    Write-Info "  3. Enter your Secret Access Key"
-    Write-Info "  4. Enter region: us-east-1"
-    Write-Info "  5. Enter output: json"
-    Write-Info ""
-    Write-Info "Then run this script again"
-    exit 1
+    
+    # Try alternative: environment variables method
+    Write-Info "Trying alternative: environment variables method..."
+    
+    if ($env:AWS_ACCESS_KEY_ID -and $env:AWS_SECRET_ACCESS_KEY) {
+        Write-Info "Found AWS credentials in environment variables"
+        $env:AWS_PROFILE = $null  # Clear profile to use env vars
+        
+        try {
+            $envIdentity = aws sts get-caller-identity 2>&1 | ConvertFrom-Json
+            if ($envIdentity.Account) {
+                $script:AWS_ACCOUNT_ID = $envIdentity.Account
+                $script:AWS_REGION = if ($env:AWS_REGION) { $env:AWS_REGION } else { "us-east-1" }
+                
+                Write-Success "Using environment variable credentials"
+                Write-Info "Account ID: $script:AWS_ACCOUNT_ID"
+                Write-Info "Region: $script:AWS_REGION"
+                Write-Info "User: $($envIdentity.Arn)"
+                
+                $continue = Read-Host "`nUse these environment credentials? (y/n)"
+                if ($continue -ne 'y' -and $continue -ne 'Y') {
+                    exit 0
+                }
+            } else {
+                throw "Invalid environment credentials"
+            }
+        } catch {
+            Write-Error-Custom "Environment credentials also failed"
+            Write-Info "Please configure hackathon AWS credentials:"
+            Write-Info ""
+            Write-Info "  Option 1 - Configure hackathon profile:"
+            Write-Info "    aws configure --profile hackathon"
+            Write-Info "    Enter your Hackathon Access Key ID"
+            Write-Info "    Enter your Hackathon Secret Access Key"
+            Write-Info "    Enter region: us-east-1"
+            Write-Info "    Enter output: json"
+            Write-Info ""
+            Write-Info "  Option 2 - Set environment variables:"
+            Write-Info "    `$env:AWS_ACCESS_KEY_ID='your_hackathon_access_key'"
+            Write-Info "    `$env:AWS_SECRET_ACCESS_KEY='your_hackathon_secret_key'"
+            Write-Info "    `$env:AWS_REGION='us-east-1'"
+            Write-Info ""
+            Write-Info "Then run this script again"
+            exit 1
+        }
+    } else {
+        Write-Info "Please configure hackathon AWS credentials:"
+        Write-Info ""
+        Write-Info "  Option 1 - Configure hackathon profile:"
+        Write-Info "    aws configure --profile hackathon"
+        Write-Info "    Enter your Hackathon Access Key ID"
+        Write-Info "    Enter your Hackathon Secret Access Key"
+        Write-Info "    Enter region: us-east-1"
+        Write-Info "    Enter output: json"
+        Write-Info ""
+        Write-Info "  Option 2 - Set environment variables:"
+        Write-Info "    `$env:AWS_ACCESS_KEY_ID='your_hackathon_access_key'"
+        Write-Info "    `$env:AWS_SECRET_ACCESS_KEY='your_hackathon_secret_key'"
+        Write-Info "    `$env:AWS_REGION='us-east-1'"
+        Write-Info ""
+        Write-Info "Then run this script again"
+        exit 1
+    }
 }
 
 Write-Success "Using Account: $script:AWS_ACCOUNT_ID"
 Write-Success "Using Region: $script:AWS_REGION"
 
-# Step 3: Check Bedrock Access
-Write-Step "Step 3: Checking Amazon Bedrock Access"
+# Step 3: Check AWS AI Services Access
+Write-Step "Step 3: Checking AWS AI Services Access"
 
-Write-Info "Checking Claude 3.5 Sonnet access..."
+Write-Info "Checking Amazon Bedrock access..."
 
 try {
     $bedrockOutput = aws bedrock list-foundation-models --region us-east-1 --output json 2>&1
@@ -151,6 +235,62 @@ try {
     }
 } catch {
     Write-Info "Bedrock check skipped. Will verify during deployment."
+}
+
+Write-Info "Checking Amazon Q services availability..."
+
+try {
+    # Check if Q Business is available (this will fail if not configured, which is expected)
+    $qBusinessOutput = aws qbusiness list-applications --region $script:AWS_REGION --output json 2>&1
+    
+    if ($qBusinessOutput -match "error" -or $qBusinessOutput -match "Unable") {
+        Write-Info "Amazon Q Business not configured (this is optional for basic functionality)"
+        Write-Info ""
+        Write-Info "To enable enhanced chat features with Amazon Q:"
+        Write-Info "  1. Go to: https://console.aws.amazon.com/q/business"
+        Write-Info "  2. Create a Q Business application"
+        Write-Info "  3. Set up knowledge bases with educational content"
+        Write-Info "  4. Update environment variables with Q application ID"
+        Write-Info ""
+    } else {
+        $qApps = $qBusinessOutput | ConvertFrom-Json
+        if ($qApps.applications -and $qApps.applications.Count -gt 0) {
+            Write-Success "Amazon Q Business applications found: $($qApps.applications.Count)"
+            Write-Info "Enhanced chat features will be available"
+        } else {
+            Write-Info "No Q Business applications configured"
+        }
+    }
+} catch {
+    Write-Info "Amazon Q Business check skipped (service may not be available in this region)"
+}
+
+Write-Info "Checking Bedrock Guardrails availability..."
+
+try {
+    $guardrailsOutput = aws bedrock list-guardrails --region $script:AWS_REGION --output json 2>&1
+    
+    if ($guardrailsOutput -match "error" -or $guardrailsOutput -match "Unable") {
+        Write-Info "Bedrock Guardrails not configured (recommended for content safety)"
+        Write-Info ""
+        Write-Info "To enable content safety guardrails:"
+        Write-Info "  1. Go to: https://console.aws.amazon.com/bedrock"
+        Write-Info "  2. Navigate to 'Guardrails' in the left sidebar"
+        Write-Info "  3. Create a new guardrail for educational content"
+        Write-Info "  4. Configure content filters and topic policies"
+        Write-Info "  5. Update environment variables with guardrail ID"
+        Write-Info ""
+    } else {
+        $guardrails = $guardrailsOutput | ConvertFrom-Json
+        if ($guardrails.guardrails -and $guardrails.guardrails.Count -gt 0) {
+            Write-Success "Bedrock Guardrails found: $($guardrails.guardrails.Count)"
+            Write-Info "Content safety features will be available"
+        } else {
+            Write-Info "No Bedrock Guardrails configured"
+        }
+    }
+} catch {
+    Write-Info "Bedrock Guardrails check skipped"
 }
 
 # Step 4: Backend Setup
@@ -188,15 +328,40 @@ if ($LASTEXITCODE -eq 0) {
     exit 1
 }
 
-Write-Info "Creating .env file..."
+Write-Info "Creating .env file with enhanced chat configuration..."
 $jwtSecret = -join ((65..90) + (97..122) + (48..57) | Get-Random -Count 32 | ForEach-Object {[char]$_})
 @"
+# AWS Configuration
 AWS_REGION=$script:AWS_REGION
 AWS_ACCOUNT_ID=$script:AWS_ACCOUNT_ID
+
+# Bedrock Configuration
 BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20240620-v1:0
+
+# Amazon Q Configuration (Optional - for enhanced chat features)
+# Q_BUSINESS_APPLICATION_ID=your-q-business-app-id
+# Q_BUSINESS_INDEX_ID=your-q-business-index-id
+# Q_DEVELOPER_ENABLED=false
+
+# Bedrock Guardrails Configuration (Optional - for content safety)
+# BEDROCK_GUARDRAIL_ID=your-guardrail-id
+# BEDROCK_GUARDRAIL_VERSION=DRAFT
+
+# Enhanced Chat Configuration
+ENHANCED_CHAT_ENABLED=true
+CONTENT_SAFETY_LEVEL=strict
+
+# Security
 JWT_SECRET_KEY=$jwtSecret
 "@ | Out-File -FilePath .env -Encoding utf8
-Write-Success ".env file created"
+Write-Success ".env file created with enhanced chat configuration"
+Write-Info ""
+Write-Info "📝 Configuration Notes:"
+Write-Info "  • Basic chat functionality is enabled by default"
+Write-Info "  • To enable Amazon Q features, uncomment and configure Q_BUSINESS_APPLICATION_ID"
+Write-Info "  • To enable content guardrails, uncomment and configure BEDROCK_GUARDRAIL_ID"
+Write-Info "  • Enhanced chat features provide better educational assistance"
+Write-Info ""
 
 Set-Location ..
 

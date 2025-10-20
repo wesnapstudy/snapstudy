@@ -37,6 +37,19 @@ class Settings(BaseSettings):
     bedrock_agent_alias_id: str = os.getenv("BEDROCK_AGENT_ALIAS_ID", "TSTALIASID")
     bedrock_knowledge_base_id: Optional[str] = os.getenv("BEDROCK_KNOWLEDGE_BASE_ID")
     
+    # Amazon Q Configuration
+    q_business_application_id: Optional[str] = os.getenv("Q_BUSINESS_APPLICATION_ID")
+    q_business_index_id: Optional[str] = os.getenv("Q_BUSINESS_INDEX_ID")
+    q_developer_enabled: bool = os.getenv("Q_DEVELOPER_ENABLED", "false").lower() == "true"
+    
+    # Bedrock Guardrails Configuration
+    bedrock_guardrail_id: Optional[str] = os.getenv("BEDROCK_GUARDRAIL_ID")
+    bedrock_guardrail_version: str = os.getenv("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
+    
+    # Enhanced Chat Configuration
+    enhanced_chat_enabled: bool = os.getenv("ENHANCED_CHAT_ENABLED", "true").lower() == "true"
+    content_safety_level: str = os.getenv("CONTENT_SAFETY_LEVEL", "strict")  # strict, moderate, permissive
+    
     # Security
     jwt_secret_key: str = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
     jwt_algorithm: str = "HS256"

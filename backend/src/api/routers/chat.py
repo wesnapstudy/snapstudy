@@ -10,6 +10,8 @@ import asyncio
 from datetime import datetime
 
 from ...services.chat_agent import chat_agent
+from ...services.enhanced_chat_agent import enhanced_chat_agent
+from ...services.amazon_q_service import amazon_q_service
 from ...services.auth import auth_service
 from ...services.dynamodb import db_service
 
@@ -158,13 +160,25 @@ async def websocket_chat_endpoint(websocket: WebSocket, user_id: str, token: str
                 if not user_message.strip():
                     continue
                 
-                # Process message with agentic chat agent
-                response = await chat_agent.handle_message(
-                    user_id=user_id,
-                    message=user_message,
-                    context=context,
-                    session_id=session_id
-                )
+                # Process message with enhanced agentic chat agent (with Amazon Q integration)
+                try:
+                    response = await enhanced_chat_agent.handle_enhanced_message(
+                        user_id=user_id,
+                        message=user_message,
+                        context=context,
+                        session_id=session_id
+                    )
+                except Exception as e:
+                    logger.warning(f"Enhanced chat failed, falling back to base agent: {e}")
+                    # Fallback to base chat agent
+                    response = await chat_agent.handle_message(
+                        user_id=user_id,
+                        message=user_message,
+                        context=context,
+                        session_id=session_id
+                    )
+                    response['metadata'] = response.get('metadata', {})
+                    response['metadata']['fallback_to_base'] = True
                 
                 # Send response back to client
                 response_message = {
@@ -235,13 +249,25 @@ async def send_chat_message(
             'learning_progress': request.learning_progress or {}
         }
         
-        # Process message with agentic chat agent
-        response = await chat_agent.handle_message(
-            user_id=user_id,
-            message=request.message,
-            context=context,
-            session_id=request.session_id
-        )
+        # Process message with enhanced agentic chat agent (with Amazon Q integration)
+        try:
+            response = await enhanced_chat_agent.handle_enhanced_message(
+                user_id=user_id,
+                message=request.message,
+                context=context,
+                session_id=request.session_id
+            )
+        except Exception as e:
+            logger.warning(f"Enhanced chat failed, falling back to base agent: {e}")
+            # Fallback to base chat agent
+            response = await chat_agent.handle_message(
+                user_id=user_id,
+                message=request.message,
+                context=context,
+                session_id=request.session_id
+            )
+            response['metadata'] = response.get('metadata', {})
+            response['metadata']['fallback_to_base'] = True
         
         # Track engagement
         await db_service.track_engagement({
@@ -367,12 +393,180 @@ async def test_intent_recognition(
         raise HTTPException(status_code=500, detail=f"Failed to test intent: {str(e)}")
 
 
+@router.post("/research")
+async def get_research_resources(
+    request: ChatMessageRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Get educational research resources using Amazon Q Business.
+    
+    Specialized endpoint for research assistance and academic resources.
+    """
+    try:
+        user_id = current_user['user_id']
+        
+        # Extract research topic from message
+        topic = request.message.strip()
+        if not topic:
+            raise HTTPException(status_code=400, detail="Research topic is required")
+        
+        # Get research resources using Amazon Q
+        resources_response = await amazon_q_service.get_educational_resources(
+            user_id=user_id,
+            topic=topic,
+            resource_type="research",
+            difficulty_level=current_user.get('difficulty_level', 'intermediate')
+        )
+        
+        if not resources_response['success']:
+            raise HTTPException(status_code=500, detail=resources_response.get('reason', 'Failed to get resources'))
+        
+        # Track engagement
+        await db_service.track_engagement({
+            'user_id': user_id,
+            'event_type': 'research_request',
+            'event_data': {
+                'topic': topic,
+                'resources_found': resources_response['total_found'],
+                'service_used': 'amazon_q_business'
+            }
+        })
+        
+        return {
+            'topic': topic,
+            'resources': resources_response['resources'],
+            'total_found': resources_response['total_found'],
+            'conversation_id': resources_response.get('conversation_id'),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting research resources: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get research resources: {str(e)}")
+
+
+@router.post("/coding-help")
+async def get_coding_assistance(
+    request: ChatMessageRequest,
+    current_user: Dict[str, Any] = Depends(get_current_user),
+    programming_language: str = "python"
+):
+    """
+    Get coding assistance using Amazon Q Developer or Q Business.
+    
+    Specialized endpoint for programming help and code examples.
+    """
+    try:
+        user_id = current_user['user_id']
+        
+        # Get coding assistance
+        coding_response = await amazon_q_service.get_coding_assistance(
+            user_id=user_id,
+            code_question=request.message,
+            programming_language=programming_language,
+            context={
+                'skill_level': current_user.get('difficulty_level', 'intermediate'),
+                'learning_context': request.lesson_context.get('title', 'Programming') if request.lesson_context else 'Programming'
+            }
+        )
+        
+        if not coding_response['success']:
+            raise HTTPException(status_code=500, detail=coding_response.get('reason', 'Failed to get coding help'))
+        
+        # Track engagement
+        await db_service.track_engagement({
+            'user_id': user_id,
+            'event_type': 'coding_assistance',
+            'event_data': {
+                'programming_language': programming_language,
+                'question_length': len(request.message),
+                'service_used': coding_response.get('service_used', 'amazon_q')
+            }
+        })
+        
+        return {
+            'response': coding_response['response'],
+            'code_examples': coding_response.get('code_examples', []),
+            'explanations': coding_response.get('explanations', []),
+            'programming_language': programming_language,
+            'service_used': coding_response.get('service_used'),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting coding assistance: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get coding assistance: {str(e)}")
+
+
+@router.get("/q-services/health")
+async def check_q_services_health(
+    current_user: Dict[str, Any] = Depends(get_current_user)
+):
+    """
+    Check health and availability of Amazon Q services.
+    
+    Returns status of Q Business, Q Developer, and Guardrails.
+    """
+    try:
+        health_status = await amazon_q_service.get_service_health()
+        
+        return {
+            'overall_health': health_status['overall_health'],
+            'services': health_status['services'],
+            'enhanced_features_available': health_status['overall_health'],
+            'timestamp': health_status['timestamp']
+        }
+        
+    except Exception as e:
+        logger.error(f"Error checking Q services health: {e}")
+        return {
+            'overall_health': False,
+            'services': {
+                'q_business': {'available': False, 'configured': False},
+                'q_developer': {'available': False, 'configured': False},
+                'guardrails': {'available': False, 'configured': False}
+            },
+            'enhanced_features_available': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }
+
+
 @router.get("/health")
 async def chat_health_check():
     """Health check endpoint for chat service."""
-    return {
-        'status': 'healthy',
-        'service': 'chat_agent',
-        'active_connections': len(manager.active_connections),
-        'timestamp': datetime.now().isoformat()
-    }
+    try:
+        # Check enhanced chat agent availability
+        q_health = await amazon_q_service.get_service_health()
+        
+        return {
+            'status': 'healthy',
+            'service': 'enhanced_chat_agent',
+            'active_connections': len(manager.active_connections),
+            'enhanced_features': {
+                'amazon_q_business': q_health['services']['q_business']['available'],
+                'amazon_q_developer': q_health['services']['q_developer']['available'],
+                'content_guardrails': q_health['services']['guardrails']['available']
+            },
+            'fallback_available': True,
+            'timestamp': datetime.now().isoformat()
+        }
+    except Exception as e:
+        logger.warning(f"Enhanced health check failed: {e}")
+        return {
+            'status': 'healthy',
+            'service': 'chat_agent_fallback',
+            'active_connections': len(manager.active_connections),
+            'enhanced_features': {
+                'amazon_q_business': False,
+                'amazon_q_developer': False,
+                'content_guardrails': False
+            },
+            'fallback_available': True,
+            'timestamp': datetime.now().isoformat()
+        }

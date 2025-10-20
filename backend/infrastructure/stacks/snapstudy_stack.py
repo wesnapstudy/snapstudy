@@ -14,8 +14,11 @@ from aws_cdk import (
     aws_logs as logs,
     aws_wafv2 as wafv2,
     aws_cloudwatch as cloudwatch,
+    aws_amplify_alpha as amplify,
+    aws_s3_deployment as s3deploy,
 )
 from constructs import Construct
+import os
 
 
 class SnapStudyStack(Stack):
@@ -44,6 +47,9 @@ class SnapStudyStack(Stack):
 
         # Create CloudWatch Dashboard and Alarms
         self.create_monitoring()
+
+        # Create Frontend Deployment (S3 + CloudFront)
+        self.create_frontend_deployment()
 
         # Create outputs
         self.create_outputs()
@@ -396,6 +402,49 @@ class SnapStudyStack(Stack):
                     "bedrock-agent-runtime:InvokeAgent",
                     "bedrock-agent-runtime:Retrieve",
                     "bedrock-agent-runtime:RetrieveAndGenerate"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add Amazon Q Business permissions
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "qbusiness:ChatSync",
+                    "qbusiness:Chat",
+                    "qbusiness:ListConversations",
+                    "qbusiness:GetConversation",
+                    "qbusiness:ListMessages",
+                    "qbusiness:GetApplication",
+                    "qbusiness:ListApplications"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add Amazon Q Developer permissions (when available)
+        # Note: Q Developer service is not yet available via API, but permissions are prepared
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "codewhisperer:GenerateRecommendations",
+                    "codewhisperer:GetRecommendations"
+                ],
+                resources=["*"]
+            )
+        )
+
+        # Add Bedrock Guardrails permissions
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                actions=[
+                    "bedrock:ApplyGuardrail",
+                    "bedrock:GetGuardrail",
+                    "bedrock:ListGuardrails"
                 ],
                 resources=["*"]
             )
@@ -756,6 +805,59 @@ class SnapStudyStack(Stack):
 
         self.dashboard = dashboard
 
+    def create_frontend_deployment(self):
+        """Create S3 + CloudFront deployment for frontend (most cost-effective)."""
+
+        # Create S3 bucket for frontend hosting
+        self.frontend_bucket = s3.Bucket(
+            self, "FrontendBucket",
+            bucket_name=f"snapstudy-frontend-{self.account}-{self.region}",
+            website_index_document="index.html",
+            website_error_document="index.html",
+            public_read_access=True,
+            block_public_access=s3.BlockPublicAccess(
+                block_public_acls=False,
+                block_public_policy=False,
+                ignore_public_acls=False,
+                restrict_public_buckets=False
+            ),
+            removal_policy=RemovalPolicy.DESTROY,
+            auto_delete_objects=True,
+            cors=[
+                s3.CorsRule(
+                    allowed_methods=[s3.HttpMethods.GET, s3.HttpMethods.HEAD],
+                    allowed_origins=["*"],
+                    allowed_headers=["*"],
+                    max_age=3000
+                )
+            ]
+        )
+
+        # Add bucket policy for public read
+        self.frontend_bucket.add_to_resource_policy(
+            iam.PolicyStatement(
+                effect=iam.Effect.ALLOW,
+                principals=[iam.AnyPrincipal()],
+                actions=["s3:GetObject"],
+                resources=[f"{self.frontend_bucket.bucket_arn}/*"]
+            )
+        )
+
+        # Check if frontend build exists and deploy it
+        frontend_build_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+            "..", "frontend", "build"
+        )
+
+        if os.path.exists(frontend_build_path):
+            # Deploy frontend build to S3
+            s3deploy.BucketDeployment(
+                self, "DeployFrontend",
+                sources=[s3deploy.Source.asset(frontend_build_path)],
+                destination_bucket=self.frontend_bucket,
+                retain_on_delete=False
+            )
+
     def create_outputs(self):
         """Create CloudFormation outputs."""
         
@@ -803,4 +905,19 @@ class SnapStudyStack(Stack):
             value=self.lessons_table.table_name,
             description="Lessons DynamoDB Table Name",
             export_name="SnapStudy-LessonsTableName"
+        )
+
+        # Frontend outputs
+        CfnOutput(
+            self, "FrontendBucketName",
+            value=self.frontend_bucket.bucket_name,
+            description="Frontend S3 Bucket Name",
+            export_name="SnapStudy-FrontendBucketName"
+        )
+
+        CfnOutput(
+            self, "FrontendUrl",
+            value=f"http://{self.frontend_bucket.bucket_website_domain_name}",
+            description="Frontend Website URL",
+            export_name="SnapStudy-FrontendUrl"
         )
