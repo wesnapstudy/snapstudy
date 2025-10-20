@@ -61,6 +61,7 @@ def create_snapstudy_architecture():
             
         with Cluster("AI/ML Services"):
             bedrock = Bedrock("Amazon Bedrock\n(Claude 3)")
+            bedrock_agents = Bedrock("Bedrock Agents\n(Autonomous AI)")
             textract = Textract("Amazon Textract\n(Document Processing)")
             transcribe = Transcribe("Amazon Transcribe\n(Audio/Video)")
             
@@ -95,6 +96,7 @@ def create_snapstudy_architecture():
         
         # AI/ML operations
         lambda_api >> Edge(label="Chat & Quiz Generation") >> bedrock
+        lambda_api >> Edge(label="Autonomous Actions") >> bedrock_agents
         lambda_api >> Edge(label="Document Processing") >> textract
         lambda_api >> Edge(label="Audio Processing") >> transcribe
         
@@ -108,51 +110,80 @@ def create_detailed_flow_diagram():
     with Diagram("SnapStudy - Detailed Data Flow", 
                  filename="snapstudy_data_flow", 
                  show=False,
-                 direction="LR"):
+                 direction="TB"):
         
         # User interactions
         student = Users("Student")
         educator = Users("Educator")
         
-        with Cluster("Frontend Application"):
+        with Cluster("Frontend Layer"):
             react_app = React("React SPA")
+            frontend_s3 = S3("Frontend Hosting")
             
-        with Cluster("API Gateway + Security"):
-            waf_security = WAF("WAF Rules")
+        with Cluster("Security & API Layer"):
+            waf_security = WAF("WAF Protection")
             api_gw = APIGateway("REST API")
+            cognito_auth = Cognito("Authentication")
             
-        with Cluster("Backend Services"):
-            auth_service = Lambda("Auth Service")
-            content_service = Lambda("Content Service")
-            lesson_service = Lambda("Lesson Service")
-            chat_service = Lambda("Chat Service")
-            analytics_service = Lambda("Analytics Service")
+        with Cluster("Serverless Compute"):
+            main_lambda = Lambda("Main API\n(FastAPI)")
             
-        with Cluster("Data Persistence"):
-            user_data = DynamodbTable("User Profiles")
-            lesson_data = DynamodbTable("Lesson Content")
-            progress_data = DynamodbTable("Learning Progress")
+        with Cluster("AI & ML Services"):
+            bedrock_claude = Bedrock("Bedrock Claude 3\n(Chat & Generation)")
+            bedrock_agents = Bedrock("Bedrock Agents\n(Autonomous AI)")
+            textract_service = Textract("Textract\n(Document Processing)")
+            transcribe_service = Transcribe("Transcribe\n(Audio Processing)")
             
-        with Cluster("AI Processing"):
-            ai_bedrock = Bedrock("Claude 3\n(Chat & Generation)")
-            doc_processing = Textract("Document Analysis")
+        with Cluster("Data Storage"):
+            with Cluster("DynamoDB Tables"):
+                users_table = DynamodbTable("Users")
+                lessons_table = DynamodbTable("Lessons")
+                micro_lessons_table = DynamodbTable("MicroLessons")
+                quizzes_table = DynamodbTable("Quizzes")
+                engagement_table = DynamodbTable("UserEngagement")
+                chat_table = DynamodbTable("ChatHistory")
             
-        with Cluster("Content Storage"):
-            media_storage = S3("Media Files")
+            content_s3 = S3("Content Storage")
             
-        # Flow connections
-        student >> react_app
-        educator >> react_app
+        with Cluster("Monitoring"):
+            cloudwatch_service = Cloudwatch("CloudWatch\n(Logs & Metrics)")
+            
+        # User flows
+        student >> Edge(label="Access App") >> react_app
+        educator >> Edge(label="Access App") >> react_app
         
-        react_app >> waf_security >> api_gw
+        # Frontend flows
+        react_app >> Edge(label="Static Assets") >> frontend_s3
+        react_app >> Edge(label="API Requests") >> waf_security
         
-        api_gw >> auth_service >> user_data
-        api_gw >> content_service >> [lesson_data, media_storage]
-        api_gw >> lesson_service >> [lesson_data, progress_data]
-        api_gw >> chat_service >> ai_bedrock
-        api_gw >> analytics_service >> progress_data
+        # Security flows
+        waf_security >> Edge(label="Filtered Requests") >> api_gw
+        react_app >> Edge(label="Authentication") >> cognito_auth
         
-        content_service >> doc_processing >> media_storage
+        # API flows
+        api_gw >> Edge(label="Lambda Proxy") >> main_lambda
+        main_lambda >> Edge(label="User Management") >> cognito_auth
+        
+        # Database flows
+        main_lambda >> Edge(label="User Data") >> users_table
+        main_lambda >> Edge(label="Lesson Data") >> lessons_table
+        main_lambda >> Edge(label="Micro Content") >> micro_lessons_table
+        main_lambda >> Edge(label="Quiz Data") >> quizzes_table
+        main_lambda >> Edge(label="Analytics") >> engagement_table
+        main_lambda >> Edge(label="Chat History") >> chat_table
+        
+        # Storage flows
+        main_lambda >> Edge(label="File Operations") >> content_s3
+        
+        # AI flows
+        main_lambda >> Edge(label="Chat & Generation") >> bedrock_claude
+        main_lambda >> Edge(label="Autonomous Actions") >> bedrock_agents
+        main_lambda >> Edge(label="Document Processing") >> textract_service
+        main_lambda >> Edge(label="Audio Processing") >> transcribe_service
+        
+        # Monitoring flows
+        main_lambda >> Edge(label="Logs & Metrics") >> cloudwatch_service
+        api_gw >> Edge(label="API Metrics") >> cloudwatch_service
 
 if __name__ == "__main__":
     print("🎨 Creating SnapStudy AWS Architecture Diagrams...")
