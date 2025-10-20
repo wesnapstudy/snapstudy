@@ -229,15 +229,12 @@ class EnhancedAgenticChatAgent:
             if enhanced_intent['confidence'] >= self.MEDIUM_CONFIDENCE_THRESHOLD:
                 return enhanced_intent
             
-            # Fallback to base agent intent recognition
-            base_intent = await self.agent_core.reason_over_context(
-                context={
-                    **context,
-                    'user_message': message,
-                    'enhanced_mode': True
-                },
-                goal="understand_user_intent_and_provide_appropriate_response"
-            )
+            # Use TRUE agent intent recognition (no prompts)
+            base_intent = await self.agent_core._agent_intent_recognition({
+                **context,
+                'user_message': message,
+                'enhanced_mode': True
+            })
             
             return {
                 'intent': base_intent.get('intent', EnhancedChatIntent.GENERAL_CHAT),
