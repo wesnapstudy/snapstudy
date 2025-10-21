@@ -4,6 +4,13 @@ export interface User {
   username?: string;
   first_name?: string;
   last_name?: string;
+  full_name?: string;
+  age?: number;
+  profession?: string;
+  education_level?: string;
+  country?: string;
+  onboarding_completed?: boolean;
+  preferences?: UserPreferences;
 }
 
 export interface Lesson {
@@ -70,11 +77,23 @@ export interface UserProfile {
 }
 
 export interface UserPreferences {
-  theme: 'light' | 'dark';
-  language: string;
-  notifications_enabled: boolean;
-  auto_play_videos: boolean;
-  playback_speed: number;
+  learning_style: 'visual' | 'auditory' | 'reading';
+  attention_span: number; // minutes
+  difficulty_level: 'beginner' | 'intermediate' | 'advanced';
+}
+
+export interface OnboardingData {
+  // Personal info
+  full_name?: string;
+  age?: number;
+  profession?: string;
+  education_level?: string;
+  country?: string;
+
+  // Learning preferences
+  learning_style: 'visual' | 'auditory' | 'reading';
+  attention_span: number;
+  difficulty_level: 'beginner' | 'intermediate' | 'advanced';
 }
 
 export interface Quiz {

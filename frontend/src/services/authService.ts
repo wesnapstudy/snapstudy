@@ -1,5 +1,5 @@
 import api from './api';
-import { User } from '../types';
+import { User, OnboardingData } from '../types';
 
 interface LoginCredentials {
   email: string;
@@ -24,22 +24,22 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const response = await api.post('/api/v1/auth/login', credentials);
-      const { user, token } = response.data;
+      const { access_token } = response.data;
       
-      localStorage.setItem(this.tokenKey, token);
-      return { user, token };
+      localStorage.setItem(this.tokenKey, access_token);
+      
+      // Get user data separately
+      const user = await this.getCurrentUser();
+      return { user, token: access_token };
     } catch (error) {
       throw new Error('Login failed');
     }
   }
 
-  async register(userData: RegisterData): Promise<AuthResponse> {
+  async register(userData: RegisterData): Promise<void> {
     try {
-      const response = await api.post('/api/v1/auth/register', userData);
-      const { user, token } = response.data;
-      
-      localStorage.setItem(this.tokenKey, token);
-      return { user, token };
+      await api.post('/api/v1/auth/register', userData);
+      // Don't auto-login after registration
     } catch (error) {
       throw new Error('Registration failed');
     }
@@ -64,6 +64,24 @@ class AuthService {
 
   getToken(): string | null {
     return localStorage.getItem(this.tokenKey);
+  }
+
+  async completeOnboarding(onboardingData: OnboardingData): Promise<User> {
+    try {
+      const response = await api.post('/api/v1/users/onboarding', onboardingData);
+      return response.data.user;
+    } catch (error) {
+      throw new Error('Failed to complete onboarding');
+    }
+  }
+
+  async updateProfile(profileData: Partial<User>): Promise<User> {
+    try {
+      const response = await api.put('/api/v1/users/profile', profileData);
+      return response.data.user;
+    } catch (error) {
+      throw new Error('Failed to update profile');
+    }
   }
 }
 

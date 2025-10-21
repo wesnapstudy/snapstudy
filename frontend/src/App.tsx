@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { authService } from './services/authService';
-import { User } from './types';
+import { User, OnboardingData } from './types';
 import ErrorBoundary from './components/ErrorBoundary';
 import { performanceMonitor, usePerformanceMonitor } from './utils/performance';
 import { RoutePreloader } from './utils/lazyLoading';
@@ -8,12 +8,14 @@ import './App.css';
 
 // Lazy load main components
 const LoginForm = React.lazy(() => import('./components/LoginForm'));
+const OnboardingFlow = React.lazy(() => import('./components/OnboardingFlow'));
 const MainApp = React.lazy(() => import('./components/MainApp'));
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
   const { measureAsyncOperation } = usePerformanceMonitor('App');
 
   useEffect(() => {
@@ -33,6 +35,9 @@ const App: React.FC = () => {
           setUser(currentUser);
           setIsAuthenticated(true);
           
+          // Check if user needs onboarding
+          setNeedsOnboarding(!currentUser.onboarding_completed);
+          
           // Track successful authentication
           performanceMonitor.recordMetric('AuthenticationSuccess', 1);
         }
@@ -41,6 +46,7 @@ const App: React.FC = () => {
         authService.logout();
         setIsAuthenticated(false);
         setUser(null);
+        setNeedsOnboarding(false);
         
         // Track authentication failure
         performanceMonitor.recordMetric('AuthenticationFailure', 1, {
@@ -59,6 +65,9 @@ const App: React.FC = () => {
         setUser(response.user);
         setIsAuthenticated(true);
         
+        // Check if user needs onboarding
+        setNeedsOnboarding(!response.user.onboarding_completed);
+        
         // Track successful login
         performanceMonitor.recordMetric('LoginSuccess', 1);
       } catch (error) {
@@ -76,12 +85,11 @@ const App: React.FC = () => {
   const handleRegister = async (userData: any) => {
     await measureAsyncOperation('register', async () => {
       try {
-        const response = await authService.register(userData);
-        setUser(response.user);
-        setIsAuthenticated(true);
-        
+        await authService.register(userData);
         // Track successful registration
         performanceMonitor.recordMetric('RegistrationSuccess', 1);
+        
+        // Registration successful - user will be prompted to login
       } catch (error) {
         console.error('Registration failed:', error);
         
@@ -94,10 +102,36 @@ const App: React.FC = () => {
     });
   };
 
+  const handleOnboardingComplete = async (onboardingData: OnboardingData) => {
+    await measureAsyncOperation('onboarding', async () => {
+      try {
+        const updatedUser = await authService.completeOnboarding(onboardingData);
+        setUser(updatedUser);
+        setNeedsOnboarding(false);
+        
+        // Track successful onboarding
+        performanceMonitor.recordMetric('OnboardingSuccess', 1);
+      } catch (error) {
+        console.error('Onboarding failed:', error);
+        
+        // Track onboarding failure
+        performanceMonitor.recordMetric('OnboardingFailure', 1, {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+        throw error;
+      }
+    });
+  };
+
+  const handleOnboardingSkip = () => {
+    setNeedsOnboarding(false);
+  };
+
   const handleLogout = () => {
     authService.logout();
     setUser(null);
     setIsAuthenticated(false);
+    setNeedsOnboarding(false);
   };
 
   if (loading) {
@@ -129,6 +163,11 @@ const App: React.FC = () => {
           <LoginForm 
             onLogin={handleLogin}
             onRegister={handleRegister}
+          />
+        ) : needsOnboarding ? (
+          <OnboardingFlow 
+            onComplete={handleOnboardingComplete}
+            onSkip={handleOnboardingSkip}
           />
         ) : (
           <MainApp 
