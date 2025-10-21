@@ -40,6 +40,9 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onRegister }) => {
   return (
     <div className="login-container">
       <div className="login-form">
+        <div className="login-logo">
+          <img src="/weblogo.png" alt="SnapStudy logo" />
+        </div>
         <h1>SnapStudy</h1>
         <h2>{isLogin ? 'Sign In' : 'Sign Up'}</h2>
         

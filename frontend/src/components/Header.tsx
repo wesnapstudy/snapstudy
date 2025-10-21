@@ -17,35 +17,25 @@ const Header: React.FC<HeaderProps> = ({
   onLogout 
 }) => {
   return (
-    <header className="app-header">
-      <div className="header-left">
-        <h1>SnapStudy</h1>
-        <nav>
-          <button 
-            className={currentView === 'lessons' ? 'active' : ''}
-            onClick={() => onViewChange('lessons')}
-          >
-            Lessons
-          </button>
-          <button 
-            className={currentView === 'multimedia' ? 'active' : ''}
-            onClick={() => onViewChange('multimedia')}
-          >
-            Multimedia
-          </button>
-          <button 
-            className={currentView === 'settings' ? 'active' : ''}
-            onClick={() => onViewChange('settings')}
-          >
-            Settings
-          </button>
-        </nav>
+    <header className="snap-header">
+      <div className="brand">
+        <img src="/weblogo.png" alt="SnapStudy logo" />
+        <span>SnapStudy</span>
       </div>
-      
-      <div className="header-right">
-        <span>Welcome, {user.first_name || user.email}</span>
-        <button onClick={onLogout}>Logout</button>
-      </div>
+      <nav>
+        <button 
+          className={currentView === 'lessons' ? 'active' : ''}
+          onClick={() => onViewChange('lessons')}
+        >
+          Dashboard
+        </button>
+        <button 
+          className={currentView === 'multimedia' ? 'active' : ''}
+          onClick={() => onViewChange('multimedia')}
+        >
+          Analytics
+        </button>
+      </nav>
     </header>
   );
 };

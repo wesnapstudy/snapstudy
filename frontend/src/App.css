@@ -1,18 +1,9 @@
-/* SnapStudy App Styles */
+/* SnapStudy App Styles - Matching snapstudy.html design exactly */
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
 }
 
 .loading-container {
@@ -21,14 +12,15 @@ body {
   align-items: center;
   justify-content: center;
   height: 100vh;
-  background-color: #ffffff;
+  background: linear-gradient(180deg, var(--snap-050), #e9ddff);
+  color: var(--snap-900);
 }
 
 .loading-spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #007bff;
+  border: 4px solid var(--snap-100);
+  border-top: 4px solid var(--snap-500);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-bottom: 16px;
@@ -39,72 +31,95 @@ body {
   100% { transform: rotate(360deg); }
 }
 
-/* Login Form Styles */
+/* Login Form Styles - matching SnapStudy theme */
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(180deg, var(--snap-050), #e9ddff);
 }
 
 .login-form {
   background: white;
   padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
   width: 100%;
   max-width: 400px;
+  border: 1px solid var(--border);
+}
+
+.login-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.login-logo img {
+  height: 80px;
+  width: auto;
+  object-fit: contain;
 }
 
 .login-form h1 {
   text-align: center;
-  color: #333;
+  color: var(--snap-900);
   margin-bottom: 0.5rem;
   font-size: 2rem;
+  font-weight: 700;
 }
 
 .login-form h2 {
   text-align: center;
-  color: #666;
+  color: var(--muted);
   margin-bottom: 2rem;
-  font-weight: normal;
+  font-weight: 500;
 }
 
 .login-form input {
   width: 100%;
   padding: 12px;
   margin-bottom: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   font-size: 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.login-form input:focus {
+  border-color: var(--snap-300);
 }
 
 .login-form button {
   width: 100%;
   padding: 12px;
-  background-color: #007bff;
+  background: linear-gradient(90deg, var(--snap-500), var(--snap-700));
   color: white;
   border: none;
-  border-radius: 4px;
+  border-radius: 10px;
   font-size: 16px;
+  font-weight: 500;
   cursor: pointer;
   margin-bottom: 1rem;
+  transition: filter 0.2s;
 }
 
 .login-form button:hover {
-  background-color: #0056b3;
+  filter: brightness(1.08);
 }
 
 .login-form button:disabled {
-  background-color: #ccc;
+  background: var(--muted);
   cursor: not-allowed;
+  filter: none;
 }
 
 .link-button {
   background: none !important;
   border: none !important;
-  color: #007bff !important;
+  color: var(--snap-700) !important;
   text-decoration: underline !important;
   cursor: pointer !important;
   width: auto !important;
@@ -112,13 +127,18 @@ body {
   margin: 0 !important;
 }
 
+.link-button:hover {
+  color: var(--snap-500) !important;
+}
+
 .error-message {
-  background-color: #f8d7da;
-  color: #721c24;
+  background-color: #fef2f2;
+  color: #dc2626;
   padding: 12px;
-  border-radius: 4px;
+  border-radius: 10px;
   margin-bottom: 1rem;
-  border: 1px solid #f5c6cb;
+  border: 1px solid #fecaca;
+  font-size: 14px;
 }
 
 /* Main App Styles */
@@ -128,64 +148,60 @@ body {
   flex-direction: column;
 }
 
-.app-header {
-  background-color: #ffffff;
-  border-bottom: 1px solid #e0e0e0;
-  padding: 1rem 2rem;
+/* Header matching snapstudy.html exactly */
+.snap-header {
+  height: 64px;
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: center;
+  padding: 0 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,.05);
 }
 
-.header-left {
+.snap-header .brand {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 10px;
 }
 
-.header-left h1 {
-  color: #333;
-  font-size: 1.5rem;
+.snap-header .brand img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
-.header-left nav {
+.snap-header .brand span {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--snap-900);
+}
+
+.snap-header nav {
   display: flex;
-  gap: 1rem;
+  gap: 8px;
 }
 
-.header-left nav button {
-  padding: 8px 16px;
-  border: none;
+.snap-header nav button {
   background: none;
-  color: #666;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: var(--snap-700);
+  font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
-  border-radius: 4px;
-  transition: all 0.2s;
+  transition: background 0.2s;
 }
 
-.header-left nav button:hover,
-.header-left nav button.active {
-  background-color: #007bff;
-  color: white;
+.snap-header nav button:hover {
+  background: var(--snap-100);
 }
 
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.header-right button {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  background: white;
-  color: #333;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.header-right button:hover {
-  background-color: #f8f9fa;
+.snap-header nav button.active {
+  background: var(--snap-100);
+  color: var(--snap-500);
 }
 
 .app-grid {
@@ -196,167 +212,104 @@ body {
   flex: 1;
 }
 
-.app-footer {
-  background-color: #f8f9fa;
-  padding: 1rem;
-  text-align: center;
-  color: #666;
-  border-top: 1px solid #e0e0e0;
+/* Footer matching snapstudy.html exactly */
+.snap-footer {
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--snap-700);
 }
 
 /* Component Styles */
-.lesson-library,
-.lesson-viewer,
-.study-buddy,
-.multimedia-library,
-.user-settings {
-  background: white;
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.lesson-library h2,
-.lesson-viewer h2,
-.study-buddy h2 {
-  margin-bottom: 1rem;
-  color: #333;
-}
-
-.upload-button {
-  display: inline-block;
-  padding: 10px 20px;
-  background-color: #28a745;
-  color: white;
-  border-radius: 4px;
-  cursor: pointer;
-  margin-bottom: 1rem;
-}
-
-.upload-button:hover {
-  background-color: #218838;
-}
-
-.lesson-item {
-  padding: 1rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.lesson-item:hover {
-  background-color: #f8f9fa;
-}
-
-.lesson-item.selected {
-  background-color: #e3f2fd;
-  border-color: #007bff;
-}
-
-.lesson-item h3 {
-  margin-bottom: 0.5rem;
-  color: #333;
-}
-
-.lesson-item p {
-  color: #666;
-  font-size: 0.9rem;
-  margin-bottom: 0.25rem;
-}
-
-.no-lesson {
-  text-align: center;
-  padding: 2rem;
-  color: #666;
-}
-
-.micro-lesson {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.micro-lesson h4 {
-  color: #333;
-  margin-bottom: 0.5rem;
-}
-
-.media-section {
-  margin-top: 1rem;
-}
-
-.media-section video,
-.media-section audio {
-  width: 100%;
-  max-width: 400px;
-}
-
-.chat-interface {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  height: 400px;
+/* LEFT: My Lessons - matching snapstudy.html exactly */
+.list {
   display: flex;
   flex-direction: column;
+  gap: 6px;
 }
 
-.chat-messages {
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-}
-
-.message {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  border-radius: 4px;
-}
-
-.ai-message {
-  background-color: #f8f9fa;
-  border-left: 3px solid #007bff;
-}
-
-.chat-input {
+.row {
   display: flex;
-  padding: 1rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.chat-input input {
-  flex: 1;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  margin-right: 0.5rem;
-}
-
-.chat-input button {
-  padding: 8px 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  transition: background .2s;
   cursor: pointer;
 }
 
-.coming-soon {
-  text-align: center;
-  padding: 1rem;
-  color: #666;
-  font-style: italic;
+.row:hover {
+  background: var(--snap-100);
 }
 
+.row.selected {
+  background: var(--snap-100);
+}
+
+.row .icon {
+  width: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row .title {
+  flex: 1;
+  font-size: 14px;
+}
+
+.icon.gray {
+  color: #9aa0a6;
+}
+
+.icon.green {
+  color: #10b981;
+}
+
+/* Upload (+) button */
+.plus-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background .2s;
+}
+
+.plus-btn:hover {
+  background: var(--snap-100);
+}
+
+.plus-btn svg {
+  fill: none;
+  stroke: var(--snap-700);
+  transition: stroke .2s;
+}
+
+.plus-btn:hover svg {
+  stroke: var(--snap-500);
+}
+
+/* Multimedia and Settings views */
 .multimedia-view {
   padding: 1rem;
+  background: var(--surface);
+  margin: 1rem;
+  border-radius: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
 }
 
 .settings-section {
   margin-bottom: 2rem;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-section:last-child {
@@ -364,33 +317,234 @@ body {
 }
 
 .settings-section h3 {
-  color: #333;
+  color: var(--snap-900);
   margin-bottom: 1rem;
+  font-weight: 600;
 }
 
 .profile-info p {
   margin-bottom: 0.5rem;
-  color: #666;
+  color: var(--muted);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-  .app-grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto auto;
+  .snap-header {
+    padding: 0 12px;
   }
   
-  .app-header {
-    padding: 1rem;
+  .snap-header .brand {
+    gap: 8px;
   }
   
-  .header-left {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+  .snap-header .brand span {
+    font-size: 16px;
   }
   
-  .header-left nav {
-    width: 100%;
+  .snap-header nav {
+    gap: 4px;
   }
+  
+  .snap-header nav button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .login-form {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+  
+  .actions {
+    gap: 6px;
+  }
+  
+  .icon-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .bubble {
+    max-width: 95%;
+    font-size: 13px;
+  }
+  
+  .fab-send {
+    width: 36px;
+    height: 36px;
+    right: 12px;
+    bottom: 12px;
+  }
+}
+/* MIDDL
+E: Cards - matching snapstudy.html exactly */
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,.05);
+  margin-bottom: 12px;
+}
+
+.card h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: var(--snap-900);
+}
+
+.card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--snap-700);
+  box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  transition: all 0.2s;
+}
+
+.icon-btn:hover {
+  border-color: var(--snap-300);
+  color: var(--snap-500);
+  box-shadow: 0 2px 6px rgba(124,58,237,.18);
+}
+
+.icon-btn .meta {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ico {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+}
+
+.ico svg {
+  width: 100%;
+  height: 100%;
+  fill: var(--snap-700);
+  transition: fill .2s;
+}
+
+.icon-btn:hover .ico svg {
+  fill: var(--snap-500);
+}
+
+/* RIGHT:
+ Tutor - matching snapstudy.html exactly */
+.tutor-panel {
+  padding: 0 !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  position: relative;
+}
+
+.thread {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: radial-gradient(700px 320px at -10% 110%, rgba(124,58,237,0.06), transparent 60%), #fff;
+}
+
+.bubble {
+  max-width: 90%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 14px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  line-height: 1.4;
+}
+
+.bubble.ai {
+  background: #faf7ff;
+  color: #3a2b6b;
+  align-self: flex-start;
+}
+
+.bubble.me {
+  background: #f2ecff;
+  color: var(--text);
+  align-self: flex-end;
+}
+
+.tutor-input {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 16px 12px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+}
+
+.tutor-input input {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.tutor-input input:focus {
+  border-color: var(--snap-300);
+  outline: none;
+}
+
+/* Floating Send Button (smaller icon + alignment) */
+.fab-send {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, var(--snap-500), var(--snap-700));
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(90,25,197,.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.fab-send:hover {
+  filter: brightness(1.08);
+  transform: scale(1.02);
+}
+
+.fab-send svg {
+  fill: #fff;
+  width: 15px;
+  height: 15px;
 }

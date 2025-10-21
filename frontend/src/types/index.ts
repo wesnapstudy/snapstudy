@@ -326,3 +326,8 @@ export interface EngagementEvent {
   session_id?: string;
   timestamp?: string;
 }
+
+export interface ProfileConfig {
+  guestEnabled: boolean;
+  guestUser: User;
+}

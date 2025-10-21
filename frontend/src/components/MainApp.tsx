@@ -95,22 +95,28 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
       
       {currentView === 'lessons' ? (
         <div className="app-grid">
-          <LessonLibrary
-            lessons={lessons}
-            selectedLesson={selectedLesson}
-            onLessonSelect={handleLessonSelect}
-            onLessonUpload={handleLessonUpload}
-          />
+          <section className="panel" aria-label="My Lessons">
+            <LessonLibrary
+              lessons={lessons}
+              selectedLesson={selectedLesson}
+              onLessonSelect={handleLessonSelect}
+              onLessonUpload={handleLessonUpload}
+            />
+          </section>
           
-          <LessonViewer
-            lesson={selectedLesson}
-            microLessons={microLessons}
-          />
+          <main className="panel main" aria-label="Lesson Viewer">
+            <LessonViewer
+              lesson={selectedLesson}
+              microLessons={microLessons}
+            />
+          </main>
           
-          <StudyBuddy
-            lesson={selectedLesson}
-            user={user}
-          />
+          <aside className="panel tutor" aria-label="Tutor">
+            <StudyBuddy
+              lesson={selectedLesson}
+              user={user}
+            />
+          </aside>
         </div>
       ) : currentView === 'multimedia' ? (
         <div className="multimedia-view">

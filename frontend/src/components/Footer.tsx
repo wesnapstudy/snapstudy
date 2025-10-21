@@ -2,8 +2,8 @@ import React from 'react';
 
 const Footer: React.FC = () => {
   return (
-    <footer className="app-footer">
-      <p>&copy; 2024 SnapStudy. All rights reserved.</p>
+    <footer className="snap-footer">
+      Powered by AWS Cloud Services
     </footer>
   );
 };

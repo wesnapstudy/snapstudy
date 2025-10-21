@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(npm start)",
+      "Bash(timeout 5)",
+      "Bash(dir \"D:\\repo\\hackathon\\demo\\snapstudy_b\\frontend\\public\" /b)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,33 +1,73 @@
-/* MainApp specific styles */
+/* MainApp styles matching snapstudy.html exactly */
 .main-app {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #f5f5f5;
+  background: linear-gradient(180deg, var(--snap-050), #e9ddff);
+  overflow: hidden;
 }
 
+/* App grid matching snapstudy.html exactly */
 .app-grid {
+  height: calc(100vh - 64px - 18px);
   display: grid;
-  grid-template-columns: 300px 1fr 300px;
-  gap: 1rem;
-  padding: 1rem;
-  flex: 1;
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
+  grid-template-columns: 240px 1fr 320px;
+  gap: 0;
 }
 
-@media (max-width: 1200px) {
-  .app-grid {
-    grid-template-columns: 250px 1fr 250px;
-  }
+/* Panel base styles */
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.panel:last-child {
+  border-right: none;
+  border-left: 1px solid var(--border);
+}
+
+.panel-header {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--snap-900);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.panel-body {
+  padding: 12px;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Main panel (middle) specific styling */
+.panel.main {
+  position: relative;
+  border-right: none;
+  background: 
+    radial-gradient(600px 300px at 10% -10%, rgba(124,58,237,0.10), transparent 60%),
+    radial-gradient(700px 320px at 110% 0%, rgba(90,25,197,0.08), transparent 60%),
+    #ffffff;
 }
 
 @media (max-width: 768px) {
   .app-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
-    gap: 0.5rem;
-    padding: 0.5rem;
+    height: auto;
+  }
+  
+  .panel {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  .panel:last-child {
+    border-left: none;
+    border-bottom: none;
   }
 }
