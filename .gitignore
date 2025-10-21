@@ -7,6 +7,7 @@ backend/test_venv/
 # Frontend build artifacts
 frontend/build/
 frontend/dist/
+frontend/node_modules/
 
 # Environment files with sensitive data
 frontend/.env.local

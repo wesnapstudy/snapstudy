@@ -5,7 +5,7 @@ interface HeaderProps {
   user: User;
   userProfile: UserProfile | null;
   currentView: string;
-  onViewChange: (view: 'lessons' | 'multimedia' | 'settings') => void;
+  onViewChange: (view: 'lessons' | 'settings') => void;
   onLogout: () => void;
 }
 
@@ -23,17 +23,20 @@ const Header: React.FC<HeaderProps> = ({
         <span>SnapStudy</span>
       </div>
       <nav>
-        <button 
-          className={currentView === 'lessons' ? 'active' : ''}
+        <button
+          className={`lessons-btn ${currentView === 'lessons' ? 'active' : ''}`}
           onClick={() => onViewChange('lessons')}
         >
-          Dashboard
+          My Lessons
         </button>
-        <button 
-          className={currentView === 'multimedia' ? 'active' : ''}
-          onClick={() => onViewChange('multimedia')}
+        <button
+          className={`profile-icon-btn ${currentView === 'settings' ? 'active' : ''}`}
+          onClick={() => onViewChange('settings')}
+          title={user.full_name || user.username || 'Profile'}
         >
-          Analytics
+          <div className="header-avatar">
+            {(user.first_name?.[0] || user.username?.[0] || 'U').toUpperCase()}
+          </div>
         </button>
       </nav>
     </header>

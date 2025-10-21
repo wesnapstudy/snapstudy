@@ -31,114 +31,132 @@
   100% { transform: rotate(360deg); }
 }
 
-/* Login Form Styles - matching SnapStudy theme */
+/* Login Form Styles - Old Design */
 .login-container {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(180deg, var(--snap-050), #e9ddff);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
 }
 
 .login-form {
   background: white;
-  padding: 2rem;
-  border-radius: 16px;
-  box-shadow: var(--shadow);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 40px;
   width: 100%;
   max-width: 400px;
-  border: 1px solid var(--border);
-}
-
-.login-logo {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1rem;
-}
-
-.login-logo img {
-  height: 80px;
-  width: auto;
-  object-fit: contain;
-}
-
-.login-form h1 {
   text-align: center;
-  color: var(--snap-900);
-  margin-bottom: 0.5rem;
+}
+
+/* Logo section */
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.app-logo {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 10px;
+  object-fit: contain;
+  display: block;
+  max-width: 100%;
+}
+
+.logo-section h1 {
+  color: #333;
+  margin: 0;
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .login-form h2 {
-  text-align: center;
-  color: var(--muted);
-  margin-bottom: 2rem;
+  color: #333;
+  margin: 0 0 20px 0;
+  font-size: 1.5rem;
   font-weight: 500;
 }
 
 .login-form input {
   width: 100%;
-  padding: 12px;
-  margin-bottom: 1rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 16px;
-  outline: none;
-  transition: border-color 0.2s;
+  padding: 12px 16px;
+  margin: 8px 0;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  font-size: 1rem;
+  box-sizing: border-box;
+  transition: border-color 0.3s ease;
 }
 
 .login-form input:focus {
-  border-color: var(--snap-300);
+  outline: none;
+  border-color: #667eea;
 }
 
-.login-form button {
+.login-form button[type="submit"] {
   width: 100%;
-  padding: 12px;
-  background: linear-gradient(90deg, var(--snap-500), var(--snap-700));
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 500;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
-  margin-bottom: 1rem;
-  transition: filter 0.2s;
+  margin: 10px 0;
+  transition: transform 0.2s ease;
 }
 
-.login-form button:hover {
-  filter: brightness(1.08);
+.login-form button[type="submit"]:hover:not(:disabled) {
+  transform: translateY(-2px);
 }
 
-.login-form button:disabled {
-  background: var(--muted);
+.login-form button[type="submit"]:disabled {
+  opacity: 0.7;
   cursor: not-allowed;
-  filter: none;
+}
+
+.login-form p {
+  color: #666;
+  margin: 20px 0 0 0;
 }
 
 .link-button {
-  background: none !important;
-  border: none !important;
-  color: var(--snap-700) !important;
-  text-decoration: underline !important;
-  cursor: pointer !important;
-  width: auto !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  background: none;
+  border: none;
+  color: #667eea;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
 }
 
 .link-button:hover {
-  color: var(--snap-500) !important;
+  color: #5a67d8;
 }
 
 .error-message {
-  background-color: #fef2f2;
-  color: #dc2626;
+  background: #fee;
+  color: #c33;
   padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 1rem;
-  border: 1px solid #fecaca;
-  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #fcc;
+  font-size: 0.9rem;
+  margin: 10px 0;
+}
+
+.success-message {
+  background: #efe;
+  color: #3c3;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #cfc;
+  font-size: 0.9rem;
+  margin: 10px 0;
 }
 
 /* Main App Styles */
@@ -148,16 +166,18 @@
   flex-direction: column;
 }
 
-/* Header matching snapstudy.html exactly */
+/* Header - Transparent Background */
 .snap-header {
   height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  background: #fff;
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  background: transparent;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: none;
+  position: relative;
+  z-index: 10;
 }
 
 .snap-header .brand {
@@ -180,28 +200,64 @@
 
 .snap-header nav {
   display: flex;
-  gap: 8px;
+  gap: 12px;
+  align-items: center;
 }
 
 .snap-header nav button {
   background: none;
   border: none;
-  padding: 6px 10px;
+  padding: 8px 16px;
   border-radius: 8px;
   color: var(--snap-700);
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: all 0.3s;
+  position: relative;
 }
 
 .snap-header nav button:hover {
-  background: var(--snap-100);
+  color: var(--snap-500);
 }
 
-.snap-header nav button.active {
-  background: var(--snap-100);
+/* My Lessons Button - Transparent Background */
+.lessons-btn {
+  background: transparent !important;
+}
+
+.lessons-btn.active {
+  background: transparent !important;
   color: var(--snap-500);
+  font-weight: 600;
+}
+
+/* Profile Icon Button in Header */
+.profile-icon-btn {
+  padding: 4px !important;
+  border-radius: 50% !important;
+}
+
+.profile-icon-btn.active {
+  background: var(--snap-100) !important;
+}
+
+.header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--snap-500), var(--snap-700));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  transition: transform 0.2s;
+}
+
+.profile-icon-btn:hover .header-avatar {
+  transform: scale(1.1);
 }
 
 .app-grid {
@@ -547,4 +603,295 @@ E: Cards - matching snapstudy.html exactly */
   fill: #fff;
   width: 15px;
   height: 15px;
+}
+/* Settings View */
+.settings-view {
+  flex: 1;
+  overflow: auto;
+  background: linear-gradient(180deg, var(--snap-050), #e9ddff);
+  padding: 2rem;
+}
+
+/* User Settings Container */
+.user-settings-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Profile Tabs */
+.profile-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--border);
+  background: var(--snap-050);
+}
+
+.tab-button {
+  flex: 1;
+  padding: 16px 24px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.3s;
+  border-bottom: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tab-button:hover {
+  background: rgba(124, 58, 237, 0.05);
+  color: var(--snap-700);
+}
+
+.tab-button.active {
+  color: white;
+  border-bottom-color: transparent;
+  background: linear-gradient(135deg, var(--snap-300), var(--snap-500));
+  box-shadow: 0 2px 8px rgba(167, 139, 250, 0.4);
+}
+
+.tab-button.logout-tab {
+  flex: 0.5;
+  background: rgba(244, 67, 54, 0.05);
+  color: #d32f2f;
+}
+
+.tab-button.logout-tab:hover {
+  background: rgba(244, 67, 54, 0.1);
+  color: #c62828;
+}
+
+.tab-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tab-icon svg {
+  fill: currentColor;
+}
+
+/* Profile Content */
+.profile-content {
+  padding: 2rem;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 3rem;
+  padding-bottom: 2rem;
+  border-bottom: 2px solid var(--border);
+}
+
+.profile-avatar {
+  flex-shrink: 0;
+}
+
+.avatar-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--snap-500), var(--snap-700));
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+}
+
+.profile-title {
+  flex: 1;
+}
+
+.profile-title h2 {
+  margin: 0;
+  font-size: 28px;
+  color: var(--snap-900);
+  font-weight: 700;
+}
+
+.profile-email {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.edit-profile-btn {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, var(--snap-300), var(--snap-500));
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.edit-profile-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4);
+  background: linear-gradient(135deg, var(--snap-400), var(--snap-600));
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon svg {
+  fill: currentColor;
+}
+
+/* Profile Form */
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.form-section h3 {
+  color: var(--snap-900);
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--snap-100);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: var(--snap-900);
+  font-size: 14px;
+}
+
+.form-group input,
+.form-group select {
+  padding: 12px 16px;
+  border: 2px solid #eee;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.3s;
+  background: white;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--snap-300);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.form-group input:disabled,
+.form-group select:disabled {
+  background: #f5f5f5;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 2px solid var(--border);
+}
+
+.btn-cancel,
+.btn-save {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.btn-cancel {
+  background: white;
+  border: 2px solid var(--border);
+  color: var(--snap-700);
+}
+
+.btn-cancel:hover {
+  background: var(--snap-050);
+  border-color: var(--snap-300);
+}
+
+.btn-save {
+  background: linear-gradient(135deg, var(--snap-300), var(--snap-500));
+  color: white;
+  border: none;
+}
+
+.btn-save:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4);
+  background: linear-gradient(135deg, var(--snap-400), var(--snap-600));
+}
+
+/* Analytics Content */
+.analytics-content {
+  padding: 0;
+  background: #f9f9f9;
+}
+
+/* Responsive Design for Profile */
+@media (max-width: 768px) {
+  .settings-view {
+    padding: 1rem;
+  }
+
+  .profile-content {
+    padding: 1rem;
+  }
+
+  .profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn-cancel,
+  .btn-save {
+    width: 100%;
+  }
 }

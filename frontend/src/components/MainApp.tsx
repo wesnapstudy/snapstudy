@@ -15,7 +15,7 @@ interface MainAppProps {
   onLogout: () => void;
 }
 
-type ViewType = 'lessons' | 'multimedia' | 'settings';
+type ViewType = 'lessons' | 'settings';
 
 const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
   const [currentView, setCurrentView] = useState<ViewType>('lessons');
@@ -103,14 +103,14 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
               onLessonUpload={handleLessonUpload}
             />
           </section>
-          
+
           <main className="panel main" aria-label="Lesson Viewer">
             <LessonViewer
               lesson={selectedLesson}
               microLessons={microLessons}
             />
           </main>
-          
+
           <aside className="panel tutor" aria-label="Tutor">
             <StudyBuddy
               lesson={selectedLesson}
@@ -118,16 +118,15 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             />
           </aside>
         </div>
-      ) : currentView === 'multimedia' ? (
-        <div className="multimedia-view">
-          <MultimediaLibrary />
-        </div>
       ) : (
-        <UserSettings 
-          user={user}
-          userProfile={userProfile}
-          onProfileUpdate={setUserProfile}
-        />
+        <div className="settings-view">
+          <UserSettings
+            user={user}
+            userProfile={userProfile}
+            onProfileUpdate={setUserProfile}
+            onLogout={onLogout}
+          />
+        </div>
       )}
       
       <Footer />
