@@ -3,6 +3,7 @@ node_modules/
 backend/venv/
 *.pyc
 backend/test_venv/
+backend/env/
 
 # Frontend build artifacts
 frontend/build/
