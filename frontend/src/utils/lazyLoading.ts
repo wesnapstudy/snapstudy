@@ -38,18 +38,14 @@ export function withLazyLoading<T extends React.ComponentType<any>>(
   fallback?: React.ComponentType
 ): React.ComponentType<React.ComponentProps<T>> {
   const LazyComponent = React.lazy(importFunc);
-  
-  return React.forwardRef<any, React.ComponentProps<T>>((props, ref) => (
-    <React.Suspense 
-      fallback={
-        fallback ? 
-        React.createElement(fallback) : 
-        <div className="loading-spinner">Loading...</div>
-      }
-    >
-      <LazyComponent {...props} ref={ref} />
-    </React.Suspense>
-  ));
+
+  return React.forwardRef<any, React.ComponentProps<T>>((props, ref) => {
+    return React.createElement(React.Suspense, {
+      fallback: fallback ?
+        React.createElement(fallback) :
+        React.createElement('div', { className: 'loading-spinner' }, 'Loading...')
+    }, React.createElement(LazyComponent as any, { ...props, ref }));
+  });
 }
 
 // Hook for intersection observer-based lazy loading
