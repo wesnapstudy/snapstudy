@@ -47,7 +47,7 @@ export function withLazyLoading<T extends React.ComponentType<any>>(
         <div className="loading-spinner">Loading...</div>
       }
     >
-      <LazyComponent {...props} ref={ref} />
+      <LazyComponent {...props as any} ref={ref} />
     </React.Suspense>
   ));
 }

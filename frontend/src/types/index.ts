@@ -44,12 +44,7 @@ export interface QuizQuestion {
   correct_answer: string;
 }
 
-export interface Quiz {
-  quiz_id: string;
-  micro_lesson_id: string;
-  questions: QuizQuestion[];
-  created_at: string;
-}
+
 
 export interface ChatMessage {
   id: string;

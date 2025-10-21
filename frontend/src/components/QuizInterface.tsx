@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Quiz, QuizQuestion, QuizResults, User } from '../types';
+import { Quiz, QuizQuestion, QuizResults as QuizResultsType, User } from '../types';
 import { quizService } from '../services/quizService';
 import { analyticsService } from '../services/analyticsService';
 import QuizResults from './QuizResults';
@@ -8,7 +8,7 @@ import './QuizInterface.css';
 interface QuizInterfaceProps {
   lessonId: string;
   user: User;
-  onQuizComplete?: (results: QuizResults) => void;
+  onQuizComplete?: (results: QuizResultsType) => void;
   onClose?: () => void;
 }
 
@@ -21,7 +21,7 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [results, setResults] = useState<QuizResults | null>(null);
+  const [results, setResults] = useState<QuizResultsType | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
@@ -248,58 +248,20 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
           <h3 className="question-text">{currentQuestion.question}</h3>
           
           <div className="answer-options">
-            {currentQuestion.question_type === 'multiple_choice' && (
-              <div className="multiple-choice">
-                {currentQuestion.options.map((option, index) => (
-                  <label key={index} className="option-label">
-                    <input
-                      type="radio"
-                      name={currentQuestion.id}
-                      value={option}
-                      checked={answers[currentQuestion.id] === option}
-                      onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                    />
-                    <span className="option-text">{option}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-            
-            {currentQuestion.question_type === 'true_false' && (
-              <div className="true-false">
-                <label className="option-label">
+            <div className="multiple-choice">
+              {currentQuestion.options.map((option, index) => (
+                <label key={index} className="option-label">
                   <input
                     type="radio"
                     name={currentQuestion.id}
-                    value="true"
-                    checked={answers[currentQuestion.id] === 'true'}
+                    value={option}
+                    checked={answers[currentQuestion.id] === option}
                     onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
                   />
-                  <span className="option-text">True</span>
+                  <span className="option-text">{option}</span>
                 </label>
-                <label className="option-label">
-                  <input
-                    type="radio"
-                    name={currentQuestion.id}
-                    value="false"
-                    checked={answers[currentQuestion.id] === 'false'}
-                    onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                  />
-                  <span className="option-text">False</span>
-                </label>
-              </div>
-            )}
-            
-            {currentQuestion.question_type === 'short_answer' && (
-              <div className="short-answer">
-                <textarea
-                  value={answers[currentQuestion.id] || ''}
-                  onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                  placeholder="Type your answer here..."
-                  rows={4}
-                />
-              </div>
-            )}
+              ))}
+            </div>
           </div>
 
           {showHint && hint && (

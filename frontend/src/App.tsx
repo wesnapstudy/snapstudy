@@ -4,6 +4,7 @@ import { User, OnboardingData } from './types';
 import ErrorBoundary from './components/ErrorBoundary';
 import { performanceMonitor, usePerformanceMonitor } from './utils/performance';
 import { RoutePreloader } from './utils/lazyLoading';
+import { config } from './config';
 import './App.css';
 
 // Lazy load main components
@@ -30,6 +31,17 @@ const App: React.FC = () => {
   const checkAuthState = async () => {
     await measureAsyncOperation('checkAuthState', async () => {
       try {
+        // Skip auth check if API is not properly configured
+        if (!config.api.baseUrl || 
+            config.api.baseUrl.includes('PLACEHOLDER') || 
+            config.api.baseUrl.includes('your-api-domain.com')) {
+          console.log('API not configured, skipping authentication');
+          setIsAuthenticated(false);
+          setUser(null);
+          setNeedsOnboarding(false);
+          return;
+        }
+
         if (authService.isAuthenticated()) {
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);

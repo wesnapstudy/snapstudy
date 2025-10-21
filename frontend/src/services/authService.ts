@@ -1,5 +1,6 @@
 import api from './api';
 import { User, OnboardingData } from '../types';
+import { config } from '../config';
 
 interface LoginCredentials {
   email: string;
@@ -55,6 +56,12 @@ class AuthService {
   }
 
   isAuthenticated(): boolean {
+    // If API URL is not properly configured, skip authentication
+    if (!config.api.baseUrl || 
+        config.api.baseUrl.includes('PLACEHOLDER') || 
+        config.api.baseUrl.includes('your-api-domain.com')) {
+      return false;
+    }
     return !!localStorage.getItem(this.tokenKey);
   }
 
