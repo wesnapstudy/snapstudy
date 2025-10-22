@@ -4,7 +4,8 @@ backend/venv/
 *.pyc
 backend/test_venv/
 backend/env/
-
+.claude
+*.pyc
 # Frontend build artifacts
 frontend/build/
 frontend/dist/
