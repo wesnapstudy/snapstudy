@@ -691,23 +691,16 @@ async def _store_chat_message(
             if len(messages) > 100:
                 messages = messages[-100:]
 
-            await db_service.update_item(
-                table_name='ChatHistory',
-                key={'session_id': session_id},
-                updates={
-                    'messages': messages,
-                    'updated_at': datetime.now(timezone.utc).isoformat()
-                }
-            )
+            await db_service.update_chat_session(session_id, {
+                'messages': messages,
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            })
         else:
             # Create new history
-            await db_service.put_item('ChatHistory', {
+            await db_service.create_chat_session({
                 'session_id': session_id,
                 'user_id': user_id,
-                'messages': [message_entry],
-                'created_at': datetime.now(timezone.utc).isoformat(),
-                'updated_at': datetime.now(timezone.utc).isoformat(),
-                'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 90))  # 90 days
+                'messages': [message_entry]
             })
 
     except Exception as e:

@@ -13,6 +13,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 from enum import Enum
+from decimal import Decimal
 import uuid
 
 from .bedrock import bedrock_service
@@ -127,7 +128,7 @@ class AgenticChatAgent:
                 'chat_interaction': {
                     'user_message': message,
                     'recognized_intent': intent_analysis.get('intent'),
-                    'confidence': intent_analysis.get('confidence'),
+                    'confidence': Decimal(str(intent_analysis.get('confidence', 0.0))),
                     'response_type': response_data.get('response_type'),
                     'context_summary': enhanced_context.get('context_summary', {})
                 }
@@ -138,7 +139,7 @@ class AgenticChatAgent:
                 'response': response_data['response'],
                 'response_type': response_data.get('response_type', 'text'),
                 'intent': intent_analysis.get('intent'),
-                'confidence': intent_analysis.get('confidence'),
+                'confidence': Decimal(str(intent_analysis.get('confidence', 0.0))),
                 'metadata': response_data.get('metadata', {})
             }
             
@@ -149,7 +150,7 @@ class AgenticChatAgent:
                 'response': "I'm sorry, I'm having trouble understanding right now. Could you try rephrasing your question?",
                 'response_type': 'text',
                 'intent': ChatIntent.GENERAL_CHAT,
-                'confidence': 0.0,
+                'confidence': Decimal('0.0'),
                 'error': str(e)
             }
     
@@ -205,7 +206,7 @@ class AgenticChatAgent:
         Execute appropriate response based on recognized intent with confidence scoring.
         """
         intent = intent_analysis.get('intent', ChatIntent.GENERAL_CHAT)
-        confidence = intent_analysis.get('confidence', 0.5)
+        confidence = Decimal(str(intent_analysis.get('confidence', 0.5)))
         
         # Map string intent to enum if needed
         if isinstance(intent, str):
@@ -215,7 +216,7 @@ class AgenticChatAgent:
                 intent = ChatIntent.GENERAL_CHAT
         
         # Execute intent-specific handler if confidence is high enough
-        if confidence >= self.MEDIUM_CONFIDENCE_THRESHOLD and intent in self.intent_functions:
+        if confidence >= Decimal(str(self.MEDIUM_CONFIDENCE_THRESHOLD)) and intent in self.intent_functions:
             handler = self.intent_functions[intent]
             return await handler(intent_analysis, context)
         else:
@@ -606,7 +607,7 @@ I adapt to your learning style and provide personalized help. Just ask me anythi
                     'content': ai_response,
                     'timestamp': now.isoformat(),
                     'intent': intent_analysis.get('intent'),
-                    'confidence': intent_analysis.get('confidence')
+                    'confidence': Decimal(str(intent_analysis.get('confidence', 0.0)))
                 }
             ])
             
