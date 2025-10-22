@@ -89,10 +89,22 @@ class AgenticChatAgent:
             if not session_id:
                 session_id = str(uuid.uuid4())
             
-            # Retrieve conversation history and user context
-            enhanced_context = await self._build_enhanced_context(
-                user_id, session_id, message, context
-            )
+            # Handle anonymous users
+            if not user_id or user_id == 'anonymous':
+                user_id = 'anonymous'
+                # Skip user profile lookup for anonymous users
+                enhanced_context = {
+                    'user_id': user_id,
+                    'message': message,
+                    'session_id': session_id,
+                    'user_profile': None,
+                    **context
+                }
+            else:
+                # Retrieve conversation history and user context for authenticated users
+                enhanced_context = await self._build_enhanced_context(
+                    user_id, session_id, message, context
+                )
             
             # Use AgentCore to analyze intent and context
             intent_analysis = await self.agent_core.reason_over_context(
