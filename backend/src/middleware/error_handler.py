@@ -73,17 +73,33 @@ class AuthorizationError(SnapStudyException):
 
 class ResourceNotFoundError(SnapStudyException):
     """Exception for resource not found errors."""
-    
+
     def __init__(self, resource: str, resource_id: str = "", details: Optional[Dict[str, Any]] = None):
         message = f"{resource} not found"
         if resource_id:
             message += f" (ID: {resource_id})"
-        
+
         super().__init__(
             message=message,
             status_code=status.HTTP_404_NOT_FOUND,
             error_code="RESOURCE_NOT_FOUND",
             details=details or {"resource": resource, "resource_id": resource_id}
+        )
+
+
+class ResourceConflictError(SnapStudyException):
+    """Exception for resource conflict errors (e.g., duplicate resources)."""
+
+    def __init__(self, resource: str, field: str = "", value: str = "", details: Optional[Dict[str, Any]] = None):
+        message = f"{resource} already exists"
+        if field and value:
+            message += f" with {field}: {value}"
+
+        super().__init__(
+            message=message,
+            status_code=status.HTTP_409_CONFLICT,
+            error_code="RESOURCE_CONFLICT",
+            details=details or {"resource": resource, "field": field, "value": value}
         )
 
 

@@ -13,7 +13,6 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from ..services.jwt_service import jwt_service
-from ..services.dynamodb import dynamodb_service
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +129,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         # Get additional user data from database
         try:
+            # Lazy import to avoid circular dependency
+            from ..services.dynamodb import dynamodb_service
             user_data = await dynamodb_service.get_user_by_id(user_id)
             if not user_data:
                 logger.warning(f"User {user_id} not found in database")
@@ -289,6 +290,8 @@ class RequireAuth:
             user_id = getattr(request.state, 'user_id', None)
             if user_id:
                 try:
+                    # Lazy import to avoid circular dependency
+                    from ..services.dynamodb import dynamodb_service
                     user_data = await dynamodb_service.get_user_by_id(user_id)
                     if user_data:
                         user_context = {

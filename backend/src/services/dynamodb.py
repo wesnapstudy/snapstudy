@@ -659,5 +659,7 @@ class DynamoDBService:
         return []
 
 
-# Global service instance
-db_service = DynamoDBService()
+# Global service instance - initialized lazily to avoid circular imports
+dynamodb_service = DynamoDBService()
+# Alias for backward compatibility
+db_service = dynamodb_service
