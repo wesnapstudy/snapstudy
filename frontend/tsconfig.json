@@ -22,5 +22,10 @@
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "src/tests.bak",
+    "**/*.test.ts",
+    "**/*.test.tsx"
   ]
 }

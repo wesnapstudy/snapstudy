@@ -15,6 +15,7 @@ export interface ErrorMessage {
   suggestedActions: string[];
   severity: 'low' | 'medium' | 'high' | 'critical';
   recoverable: boolean;
+  timestamp?: string;
 }
 
 // Error type mappings

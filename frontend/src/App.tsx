@@ -43,7 +43,7 @@ const App: React.FC = () => {
           return;
         }
 
-        if (authService.isAuthenticated()) {
+        if (await authService.isAuthenticated()) {
           const currentUser = await authService.getCurrentUser();
           setUser(currentUser);
           setIsAuthenticated(true);

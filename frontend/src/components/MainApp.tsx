@@ -108,6 +108,7 @@ const MainApp: React.FC<MainAppProps> = ({ user, onLogout }) => {
             <LessonViewer
               lesson={selectedLesson}
               microLessons={microLessons}
+              user={user}
             />
           </main>
 

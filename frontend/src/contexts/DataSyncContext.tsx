@@ -148,7 +148,7 @@ export function DataSyncProvider({ children }: { children: React.ReactNode }) {
       const newCache = new Map(state.cache);
       let hasExpired = false;
 
-      for (const [key, entry] of newCache.entries()) {
+      for (const [key, entry] of Array.from(newCache.entries())) {
         if (entry.expiry < now) {
           newCache.delete(key);
           hasExpired = true;

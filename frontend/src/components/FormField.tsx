@@ -316,7 +316,7 @@ export const FileUploadField: React.FC<Omit<FormFieldProps, 'type'> & {
   maxSize?: number; // in MB
   onFileValidation?: (files: FileList | null) => string | null;
 }> = ({ maxSize = 10, onFileValidation, onChange, ...props }) => {
-  const handleFileChange = (value: string, files: FileList | null) => {
+  const handleFileChange = (value: string, files?: FileList | null, validationResult?: ValidationResult) => {
     let validationError: string | null = null;
 
     if (files && files.length > 0) {

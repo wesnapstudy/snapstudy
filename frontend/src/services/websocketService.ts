@@ -207,7 +207,7 @@ class WebSocketService {
   }
 
   unsubscribe(subscriptionId: string): void {
-    for (const [type, subscriptions] of this.subscriptions.entries()) {
+    for (const [type, subscriptions] of Array.from(this.subscriptions.entries())) {
       const index = subscriptions.findIndex(sub => sub.id === subscriptionId);
       if (index !== -1) {
         subscriptions.splice(index, 1);
@@ -234,7 +234,7 @@ class WebSocketService {
 
   private getTotalSubscriptions(): number {
     let total = 0;
-    for (const subscriptions of this.subscriptions.values()) {
+    for (const subscriptions of Array.from(this.subscriptions.values())) {
       total += subscriptions.length;
     }
     return total;

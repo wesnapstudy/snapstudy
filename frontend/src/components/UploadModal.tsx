@@ -250,7 +250,6 @@ const UploadModal: React.FC<UploadModalProps> = ({ onUpload, onClose, onProcessi
               onRetry={() => setValidationErrors([])}
               className="upload-validation-errors"
             />
-            </div>
           )}
 
           {/* Upload Queue */}

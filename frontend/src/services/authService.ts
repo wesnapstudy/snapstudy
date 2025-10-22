@@ -195,11 +195,8 @@ class AuthService {
       throw new Error('Failed to update profile');
     }
   }
-}
 
-export const authService = new AuthService();
-  /
-**
+  /**
    * Handles session timeout
    */
   private async handleSessionTimeout(): Promise<void> {
@@ -213,58 +210,6 @@ export const authService = new AuthService();
       window.location.href = '/';
     }
   }
-
-  /**
-   * Refreshes the authentication token
-   */
-  async refreshToken(): Promise<string | null> {
-    try {
-      const refreshToken = await this.getRefreshToken();
-      if (!refreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const response = await api.post('/api/v1/auth/refresh', {
-        refresh_token: refreshToken
-      });
-
-      const { access_token, refresh_token: newRefreshToken } = response.data;
-
-      // Store new tokens securely
-      await SecureStorage.setItem(this.tokenKey, access_token, { 
-        encrypt: true, 
-        expirationMinutes: 60 
-      });
-
-      if (newRefreshToken) {
-        await SecureStorage.setItem(this.refreshTokenKey, newRefreshToken, { 
-          encrypt: true, 
-          expirationMinutes: 10080 
-        });
-      }
-
-      // Extend session
-      SessionManager.extendSession(60);
-
-      return access_token;
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      await this.logout();
-      return null;
-    }
-  }
-
-  /**
-   * Gets remaining session time
-   */
-  async getSessionTimeRemaining(): Promise<number> {
-    return await SessionManager.getRemainingTime();
-  }
-
-  /**
-   * Extends the current session
-   */
-  extendSession(): void {
-    SessionManager.extendSession();
-  }
 }
+
+export const authService = new AuthService();

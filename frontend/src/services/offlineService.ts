@@ -81,9 +81,9 @@ class OfflineService {
     const criticalData = this.getCriticalData();
     if (!criticalData) {
       this.setCriticalData({
-        lessons: {},
-        progress: {},
-        analytics: {},
+        lessons: new Map(),
+        progress: new Map(),
+        analytics: new Map(),
         userProfile: null,
         settings: {}
       });
@@ -239,48 +239,48 @@ class OfflineService {
   // Store lesson data for offline access
   storeLessonOffline(lessonId: string, lessonData: any) {
     const criticalData = this.getCriticalData() || this.getEmptyStorage();
-    criticalData.lessons[lessonId] = {
+    criticalData.lessons.set(lessonId, {
       ...lessonData,
       cachedAt: Date.now()
-    };
+    });
     this.setCriticalData(criticalData);
   }
 
   getLessonOffline(lessonId: string): any | null {
     const criticalData = this.getCriticalData();
-    return criticalData?.lessons[lessonId] || null;
+    return criticalData?.lessons.get(lessonId) || null;
   }
 
   // Store progress data for offline access
   storeProgressOffline(progressData: any, lessonId?: string) {
     const criticalData = this.getCriticalData() || this.getEmptyStorage();
     const key = lessonId || 'overall';
-    criticalData.progress[key] = {
+    criticalData.progress.set(key, {
       ...progressData,
       cachedAt: Date.now()
-    };
+    });
     this.setCriticalData(criticalData);
   }
 
   getProgressOffline(lessonId?: string): any | null {
     const criticalData = this.getCriticalData();
     const key = lessonId || 'overall';
-    return criticalData?.progress[key] || null;
+    return criticalData?.progress.get(key) || null;
   }
 
   // Store analytics data for offline access
   storeAnalyticsOffline(analyticsData: any, type: string) {
     const criticalData = this.getCriticalData() || this.getEmptyStorage();
-    criticalData.analytics[type] = {
+    criticalData.analytics.set(type, {
       ...analyticsData,
       cachedAt: Date.now()
-    };
+    });
     this.setCriticalData(criticalData);
   }
 
   getAnalyticsOffline(type: string): any | null {
     const criticalData = this.getCriticalData();
-    return criticalData?.analytics[type] || null;
+    return criticalData?.analytics.get(type) || null;
   }
 
   // Cleanup old data to manage storage size
@@ -289,27 +289,25 @@ class OfflineService {
     const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
 
     // Clean up old lessons
-    Object.keys(data.lessons).forEach(lessonId => {
-      const lesson = data.lessons[lessonId];
+    for (const [lessonId, lesson] of Array.from(data.lessons.entries())) {
       if (lesson.cachedAt && now - lesson.cachedAt > maxAge) {
-        delete data.lessons[lessonId];
+        data.lessons.delete(lessonId);
       }
-    });
+    }
 
     // Clean up old analytics
-    Object.keys(data.analytics).forEach(type => {
-      const analytics = data.analytics[type];
+    for (const [type, analytics] of Array.from(data.analytics.entries())) {
       if (analytics.cachedAt && now - analytics.cachedAt > maxAge) {
-        delete data.analytics[type];
+        data.analytics.delete(type);
       }
-    });
+    }
   }
 
   private getEmptyStorage(): OfflineStorage {
     return {
-      lessons: {},
-      progress: {},
-      analytics: {},
+      lessons: new Map(),
+      progress: new Map(),
+      analytics: new Map(),
       userProfile: null,
       settings: {}
     };

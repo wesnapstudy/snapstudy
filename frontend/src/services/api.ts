@@ -54,7 +54,13 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     // Validate security headers
-    const headerValidation = SecurityValidator.validateSecurityHeaders(response.headers);
+    const headers: Record<string, string> = {};
+    Object.entries(response.headers).forEach(([key, value]) => {
+      if (typeof value === 'string') {
+        headers[key] = value;
+      }
+    });
+    const headerValidation = SecurityValidator.validateSecurityHeaders(headers);
     if (!headerValidation.valid && process.env.NODE_ENV === 'development') {
       console.warn('Missing security headers:', headerValidation.missing);
       if (headerValidation.warnings.length > 0) {
@@ -99,8 +105,8 @@ api.interceptors.response.use(
 );
 
 export default api;
-/
-/ Security validation functions for external use
+
+// Security validation functions for external use
 export const validateApiSecurity = async (): Promise<{
   httpsEnforced: boolean;
   certificateValid: boolean;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { offlineService, OfflineAction } from '../services/offlineService';
 import { analyticsService } from '../services/analyticsService';
 
@@ -106,7 +106,7 @@ export function useOfflineMode() {
   }, []);
 
   // Store data for offline access
-  const storeForOffline = useCallback({
+  const storeForOffline = useMemo(() => ({
     lesson: (lessonId: string, lessonData: any) => {
       offlineService.storeLessonOffline(lessonId, lessonData);
       setState(prev => ({
@@ -128,14 +128,14 @@ export function useOfflineMode() {
         storageUsage: offlineService.getStorageUsage()
       }));
     }
-  }, []);
+  }), []);
 
   // Get data from offline storage
-  const getFromOffline = useCallback({
+  const getFromOffline = useMemo(() => ({
     lesson: (lessonId: string) => offlineService.getLessonOffline(lessonId),
     progress: (lessonId?: string) => offlineService.getProgressOffline(lessonId),
     analytics: (type: string) => offlineService.getAnalyticsOffline(type)
-  }, []);
+  }), []);
 
   return {
     // State
