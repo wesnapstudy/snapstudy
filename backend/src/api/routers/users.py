@@ -68,7 +68,17 @@ async def complete_onboarding(
         # Remove None values
         profile_updates = {k: v for k, v in profile_updates.items() if v is not None}
         
-        # Extract preferences
+        # Add learning preferences directly to profile updates
+        if onboarding_data.get("learning_style"):
+            profile_updates["learning_style"] = onboarding_data.get("learning_style")
+        
+        if onboarding_data.get("attention_span"):
+            profile_updates["attention_span"] = onboarding_data.get("attention_span")
+        
+        if onboarding_data.get("difficulty_level"):
+            profile_updates["difficulty_level"] = onboarding_data.get("difficulty_level")
+        
+        # Also store in preferences object for backward compatibility
         preferences = {
             "learning_style": onboarding_data.get("learning_style"),
             "attention_span": onboarding_data.get("attention_span"),

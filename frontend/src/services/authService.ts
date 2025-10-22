@@ -201,14 +201,9 @@ class AuthService {
 
   async completeOnboarding(onboardingData: OnboardingData): Promise<User> {
     try {
-      // For now, just mark onboarding as completed locally
-      // In a real app, you would send this to the backend
-      const currentUser = await this.getCurrentUser();
-      const updatedUser = {
-        ...currentUser,
-        ...onboardingData,
-        onboarding_completed: true
-      };
+      // Send onboarding data to backend
+      const response = await api.post('/api/v1/users/onboarding', onboardingData);
+      const updatedUser = response.data.user;
       
       // Cache the updated user data
       await SecureStorage.setItem(this.userDataKey, updatedUser, {
