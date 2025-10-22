@@ -6,7 +6,10 @@
   - Add automatic token inclusion in all API requests
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6_
 
-- [ ] 1.1 Enhance API service with token refresh and retry logic
+- [x] 1.1 Enhance API service with token refresh and retry logic
+
+
+
 
 
 

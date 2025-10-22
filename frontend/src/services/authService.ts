@@ -3,7 +3,7 @@ import { User, OnboardingData } from '../types';
 import { config } from '../config';
 import { profileService } from './profileService';
 import { SecureStorage, SessionManager } from '../utils/secureStorage';
-import { cachedApiCall } from '../utils/apiOptimization';
+
 
 interface LoginCredentials {
   email: string;
@@ -90,15 +90,45 @@ class AuthService {
 
       return { user, token: access_token };
     } catch (error) {
+      console.error('Login error:', error);
       throw new Error('Login failed. Please check your credentials.');
     }
   }
 
-  async register(userData: RegisterData): Promise<void> {
+  async register(userData: RegisterData): Promise<AuthResponse> {
     try {
-      await api.post('/api/v1/auth/register', userData);
-      // Don't auto-login after registration
+      const response = await api.post('/api/v1/auth/register', userData);
+      const { access_token, refresh_token } = response.data;
+
+      // Store tokens securely with encryption
+      await SecureStorage.setItem(this.tokenKey, access_token, {
+        encrypt: true,
+        expirationMinutes: 60 // 1 hour for access token
+      });
+
+      if (refresh_token) {
+        await SecureStorage.setItem(this.refreshTokenKey, refresh_token, {
+          encrypt: true,
+          expirationMinutes: 10080 // 7 days for refresh token
+        });
+      }
+
+      // Clear profile user flag
+      await SecureStorage.removeItem(this.profileUserKey);
+
+      // Get user data and store securely
+      const user = await this.getCurrentUser();
+      await SecureStorage.setItem(this.userDataKey, user, {
+        encrypt: true,
+        expirationMinutes: 480 // 8 hours
+      });
+
+      // Start session management
+      SessionManager.startSession(60); // 1 hour for API sessions
+
+      return { user, token: access_token };
     } catch (error) {
+      console.error('Registration error:', error);
       throw new Error('Registration failed');
     }
   }

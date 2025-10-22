@@ -24,10 +24,28 @@ const api = axios.create({
 
 // Add auth token and security validation to requests
 api.interceptors.request.use(async (config) => {
-  // Add auth token (import authService to avoid circular dependency)
-  const token = localStorage.getItem('auth_token'); // Fallback to localStorage for now
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  // Add auth token from SecureStorage
+  try {
+    // Import SecureStorage to get the token properly
+    const { SecureStorage } = await import('../utils/secureStorage');
+    const token = await SecureStorage.getItem('auth_token');
+    
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Fallback to localStorage for backward compatibility
+      const fallbackToken = localStorage.getItem('auth_token');
+      if (fallbackToken) {
+        config.headers.Authorization = `Bearer ${fallbackToken}`;
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to get auth token:', error);
+    // Fallback to localStorage
+    const fallbackToken = localStorage.getItem('auth_token');
+    if (fallbackToken) {
+      config.headers.Authorization = `Bearer ${fallbackToken}`;
+    }
   }
 
   // Sanitize request data
@@ -82,25 +100,72 @@ api.interceptors.response.use(
 
     return response;
   },
-  (error: AxiosError) => {
-    // Handle authentication errors
-    if (error.response?.status === 401) {
-      // Don't reload if already on login page to prevent infinite loops
+  async (error: AxiosError) => {
+    const originalRequest = error.config as any;
+
+    // Handle authentication errors with token refresh
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Try to refresh the token
+        const { SecureStorage } = await import('../utils/secureStorage');
+        const refreshToken = await SecureStorage.getItem('refresh_token');
+        
+        if (refreshToken) {
+          // Attempt token refresh
+          const refreshResponse = await axios.post(`${secureBaseUrl}/api/v1/auth/refresh`, {
+            refresh_token: refreshToken
+          });
+
+          const { access_token, refresh_token: newRefreshToken } = refreshResponse.data;
+
+          // Store new tokens
+          await SecureStorage.setItem('auth_token', access_token, {
+            encrypt: true,
+            expirationMinutes: 60
+          });
+
+          if (newRefreshToken) {
+            await SecureStorage.setItem('refresh_token', newRefreshToken, {
+              encrypt: true,
+              expirationMinutes: 10080 // 7 days
+            });
+          }
+
+          // Update the original request with new token
+          originalRequest.headers.Authorization = `Bearer ${access_token}`;
+
+          // Retry the original request
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        console.warn('Token refresh failed:', refreshError);
+        // Fall through to logout logic
+      }
+
+      // If refresh fails, logout user
       const isOnLoginPage = window.location.pathname.includes('/login') ||
                             window.location.pathname === '/';
 
       if (!isOnLoginPage) {
+        // Clear all tokens
+        try {
+          const { SecureStorage } = await import('../utils/secureStorage');
+          await SecureStorage.removeItem('auth_token');
+          await SecureStorage.removeItem('refresh_token');
+        } catch (e) {
+          console.warn('Failed to clear secure storage:', e);
+        }
+
+        // Clear localStorage fallback
         localStorage.removeItem('auth_token');
         localStorage.removeItem('refresh_token');
 
-        // Dispatch custom event instead of direct navigation
-        // This allows App component to handle the navigation properly
+        // Dispatch custom event for logout
         window.dispatchEvent(new CustomEvent('auth:expired', {
-          detail: { error: error.message }
+          detail: { error: error.message, reason: 'token_expired' }
         }));
-
-        // Note: Avoid using window.location.href as it causes full page reload
-        // The App component should listen for 'auth:expired' event and handle navigation
       }
     }
 
