@@ -208,10 +208,40 @@ class DynamoDBService:
     ) -> List[Dict[str, Any]]:
         """Query items from DynamoDB table with retry logic."""
         try:
-            table = getattr(self, f"{table_name.lower()}_table")
+            # Map table names to actual table attributes
+            table_mapping = {
+                'users': self.users_table,
+                'lessons': self.lessons_table,
+                'microlessons': self.micro_lessons_table,
+                'quizzes': self.quizzes_table,
+                'userengagement': self.user_engagement_table,
+                'chathistory': self.chat_history_table
+            }
+            
+            table_key = table_name.lower()
+            if table_key not in table_mapping:
+                raise ValueError(f"Unknown table: {table_name}")
+            
+            table = table_mapping[table_key]
+            
+            # Handle key_condition - if it's a dict, convert to proper expression
+            if isinstance(key_condition, dict):
+                from boto3.dynamodb.conditions import Key
+                key_conditions = []
+                for key, value in key_condition.items():
+                    key_conditions.append(Key(key).eq(value))
+                
+                if len(key_conditions) == 1:
+                    key_condition_expr = key_conditions[0]
+                else:
+                    key_condition_expr = key_conditions[0]
+                    for condition in key_conditions[1:]:
+                        key_condition_expr = key_condition_expr & condition
+            else:
+                key_condition_expr = key_condition
             
             query_params = {
-                'KeyConditionExpression': key_condition,
+                'KeyConditionExpression': key_condition_expr,
                 'ScanIndexForward': scan_index_forward
             }
             
