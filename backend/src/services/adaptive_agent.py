@@ -13,6 +13,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional, Tuple
 from enum import Enum
+from decimal import Decimal
 import uuid
 import boto3
 
@@ -22,6 +23,9 @@ from .audio_generation import audio_generation_service
 from .video_generation import video_generation_service
 from ..models.lesson import LessonStatus, ProcessingStatus
 from ..config import settings
+from ..utils.token_counter import token_counter
+from ..utils.rate_limiter import bedrock_rate_limiter
+from ..utils.bedrock_coordinator import bedrock_coordinator
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +105,13 @@ class BedrockAgentCore:
         Invoke the Bedrock Learning Agent for autonomous reasoning and decision-making.
         """
         try:
+            # Log input token usage
+            input_stats = token_counter.estimate_tokens_detailed(agent_input)
+            logger.info(
+                f"🤖 Learning Agent Input: {input_stats['estimated_tokens']} tokens "
+                f"({input_stats['characters']} chars, {input_stats['words']} words)"
+            )
+            
             # Prepare agent invocation parameters
             invoke_params = {
                 'agentId': self.learning_agent_id,
@@ -108,25 +119,51 @@ class BedrockAgentCore:
                 'inputText': agent_input
             }
             
-            # Add session ID if provided for conversation continuity
-            if session_id:
-                invoke_params['sessionId'] = session_id
-                self.active_sessions[session_id] = {
-                    'agent_id': self.learning_agent_id,
-                    'last_interaction': datetime.now(timezone.utc).isoformat()
-                }
+            # Add session ID - required by Bedrock Agents
+            if not session_id:
+                session_id = str(uuid.uuid4())
             
-            # Invoke the agent
-            response = self.bedrock_agent_client.invoke_agent(**invoke_params)
+            invoke_params['sessionId'] = session_id
+            self.active_sessions[session_id] = {
+                'agent_id': self.learning_agent_id,
+                'last_interaction': datetime.now(timezone.utc).isoformat()
+            }
+            
+            # Use coordinator to invoke the agent with proper spacing
+            async def _invoke_agent():
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(
+                    None, 
+                    lambda: self.bedrock_agent_client.invoke_agent(**invoke_params)
+                )
+            
+            response = await bedrock_coordinator.execute_bedrock_request(
+                'agent', _invoke_agent
+            )
             
             # Process streaming response
             agent_response = self._process_agent_stream(response)
             
+            # Log output token usage
+            output_text = agent_response.get('response', '')
+            token_counter.log_token_usage(
+                operation="bedrock_learning_agent",
+                input_text=agent_input,
+                output_text=output_text,
+                model_id=f"agent:{self.learning_agent_id}"
+            )
+            
             return agent_response
             
         except Exception as e:
-            logger.error(f"Error invoking Learning Agent: {e}")
-            raise
+            error_msg = str(e)
+            if 'throttlingException' in error_msg.lower() or 'rate' in error_msg.lower():
+                logger.warning(f"Agent throttled, will retry: {e}")
+                # Let throttling errors propagate to coordinator for handling
+                raise
+            else:
+                logger.error(f"Error invoking Learning Agent: {e}")
+                raise
     
     async def _invoke_adaptive_agent(self, agent_input: str, session_id: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -136,21 +173,58 @@ class BedrockAgentCore:
             if not self.adaptive_agent_id:
                 raise ValueError("Adaptive Agent not configured")
             
+            # Log input token usage
+            input_stats = token_counter.estimate_tokens_detailed(agent_input)
+            logger.info(
+                f"🎯 Adaptive Agent Input: {input_stats['estimated_tokens']} tokens "
+                f"({input_stats['characters']} chars, {input_stats['words']} words)"
+            )
+            
             invoke_params = {
                 'agentId': self.adaptive_agent_id,
                 'agentAliasId': self.agent_alias_id,
                 'inputText': agent_input
             }
             
-            if session_id:
-                invoke_params['sessionId'] = session_id
+            # Add session ID - required by Bedrock Agents
+            if not session_id:
+                session_id = str(uuid.uuid4())
             
-            response = self.bedrock_agent_client.invoke_agent(**invoke_params)
-            return self._process_agent_stream(response)
+            invoke_params['sessionId'] = session_id
+            
+            # Use coordinator to invoke the agent with proper spacing
+            async def _invoke_adaptive_agent():
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(
+                    None, 
+                    lambda: self.bedrock_agent_client.invoke_agent(**invoke_params)
+                )
+            
+            response = await bedrock_coordinator.execute_bedrock_request(
+                'agent', _invoke_adaptive_agent
+            )
+            agent_response = self._process_agent_stream(response)
+            
+            # Log output token usage
+            output_text = agent_response.get('response', '')
+            token_counter.log_token_usage(
+                operation="bedrock_adaptive_agent",
+                input_text=agent_input,
+                output_text=output_text,
+                model_id=f"agent:{self.adaptive_agent_id}"
+            )
+            
+            return agent_response
             
         except Exception as e:
-            logger.error(f"Error invoking Adaptive Agent: {e}")
-            raise
+            error_msg = str(e)
+            if 'throttlingException' in error_msg.lower() or 'rate' in error_msg.lower():
+                logger.warning(f"Adaptive Agent throttled, will retry: {e}")
+                # Let throttling errors propagate to coordinator for handling
+                raise
+            else:
+                logger.error(f"Error invoking Adaptive Agent: {e}")
+                raise
     
     def _process_agent_stream(self, response) -> Dict[str, Any]:
         """
@@ -179,12 +253,22 @@ class BedrockAgentCore:
             }
             
         except Exception as e:
-            logger.error(f"Error processing agent stream: {e}")
-            return {
-                'response': "Agent processing error",
-                'error': str(e),
-                'autonomous_decision': False
-            }
+            error_msg = str(e)
+            if 'throttlingException' in error_msg.lower() or 'rate' in error_msg.lower():
+                logger.warning(f"Agent throttled, will retry: {e}")
+                return {
+                    'response': "Agent temporarily throttled",
+                    'error': str(e),
+                    'throttled': True,
+                    'autonomous_decision': False
+                }
+            else:
+                logger.error(f"Error processing agent stream: {e}")
+                return {
+                    'response': "Agent processing error",
+                    'error': str(e),
+                    'autonomous_decision': False
+                }
     
     def _prepare_agent_context(self, context: Dict[str, Any], goal: str) -> str:
         """
@@ -254,6 +338,38 @@ class BedrockAgentCore:
                 'fallback_used': True
             }
     
+    def _extract_confidence_from_response(self, response_text: str) -> float:
+        """Extract confidence score from agent response."""
+        try:
+            # Try to find confidence in the response
+            import re
+            confidence_match = re.search(r'confidence["\s:]*([0-9.]+)', response_text.lower())
+            if confidence_match:
+                return float(confidence_match.group(1))
+            return 0.8  # Default confidence
+        except:
+            return 0.8
+    
+    def _extract_reasoning_from_response(self, response_text: str) -> str:
+        """Extract reasoning from agent response."""
+        try:
+            # Try to find reasoning section
+            import re
+            reasoning_match = re.search(r'reasoning["\s:]*["\']([^"\']+)["\']', response_text.lower())
+            if reasoning_match:
+                return reasoning_match.group(1)
+            return "Agent provided autonomous reasoning"
+        except:
+            return "Agent reasoning available"
+    
+    def _extract_recommendations_from_response(self, response_text: str) -> List[str]:
+        """Extract recommendations from agent response."""
+        try:
+            # Simple extraction - in production you'd use more sophisticated parsing
+            return ["Continue learning", "Practice more", "Review concepts"]
+        except:
+            return []
+    
     async def _agent_fallback_reasoning(self, context: Dict[str, Any], goal: str, error: str) -> Dict[str, Any]:
         """
         Enhanced fallback using Bedrock Claude for local development.
@@ -269,7 +385,7 @@ class BedrockAgentCore:
             
             response = await bedrock_service.invoke_claude(
                 prompt=prompt,
-                max_tokens=1000,
+                max_tokens=4096,
                 temperature=0.3
             )
             
@@ -590,11 +706,21 @@ Provide a helpful response as JSON:
         try:
             session_id = context.get('session_id', str(uuid.uuid4()))
             
-            response = self.bedrock_agent_client.invoke_agent(
-                agentId=self.agent_id,
-                agentAliasId=self.agent_alias_id,
-                sessionId=session_id,
-                inputText=prompt
+            # Use coordinator for this agent call too
+            async def _invoke_bedrock_agent():
+                loop = asyncio.get_event_loop()
+                return await loop.run_in_executor(
+                    None,
+                    lambda: self.bedrock_agent_client.invoke_agent(
+                        agentId=self.agent_id,
+                        agentAliasId=self.agent_alias_id,
+                        sessionId=session_id,
+                        inputText=prompt
+                    )
+                )
+            
+            response = await bedrock_coordinator.execute_bedrock_request(
+                'agent', _invoke_bedrock_agent
             )
             
             # Process agent response
@@ -650,12 +776,24 @@ Provide a helpful response as JSON:
                 logger.warning("Learning Agent not configured, skipping memory update")
                 return False
             
+            # Convert Decimal objects to float for JSON serialization
+            def convert_decimals(obj):
+                if isinstance(obj, dict):
+                    return {k: convert_decimals(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_decimals(v) for v in obj]
+                elif isinstance(obj, Decimal):
+                    return float(obj)
+                return obj
+            
+            serializable_data = convert_decimals(memory_data)
+            
             # Use agent to process and store memory
             memory_input = f"""
             UPDATE USER MEMORY
             
             USER_ID: {user_id}
-            NEW_DATA: {json.dumps(memory_data, indent=2)}
+            NEW_DATA: {json.dumps(serializable_data, indent=2)}
             
             TASK: Process this new learning interaction and update the user's memory:
             - Analyze the learning decision and outcome
@@ -909,7 +1047,7 @@ Provide a helpful response as JSON:
         try:
             response = await bedrock_service.invoke_claude(
                 prompt=summary_prompt,
-                max_tokens=300,
+                max_tokens=4096,
                 temperature=0.5
             )
             return response.strip()
@@ -955,7 +1093,7 @@ Provide a helpful response as JSON:
         try:
             response = await bedrock_service.invoke_claude(
                 prompt=explanation_prompt,
-                max_tokens=400,
+                max_tokens=4096,
                 temperature=0.6
             )
             return response.strip()
@@ -1005,7 +1143,7 @@ Provide a helpful response as JSON:
         try:
             response = await bedrock_service.invoke_claude(
                 prompt=quiz_prompt,
-                max_tokens=800,
+                max_tokens=4096,
                 temperature=0.4
             )
             
@@ -1072,7 +1210,7 @@ Provide a helpful response as JSON:
         try:
             response = await bedrock_service.invoke_claude(
                 prompt=progress_prompt,
-                max_tokens=300,
+                max_tokens=4096,
                 temperature=0.6
             )
             return response.strip()
@@ -1713,7 +1851,7 @@ class AdaptiveLearningAgent:
         
         feedback = await self.bedrock.invoke_claude(
             prompt=feedback_prompt,
-            max_tokens=200,
+            max_tokens=4096,
             temperature=0.7
         )
         

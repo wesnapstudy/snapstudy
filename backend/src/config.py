@@ -58,5 +58,15 @@ class Settings:
 
     # Environment
     environment: str = os.getenv("ENVIRONMENT", "development")
+    
+    # Throttling and Rate Limiting Configuration
+    bedrock_max_requests_per_minute: int = int(os.getenv("BEDROCK_MAX_RPM", "80"))
+    bedrock_burst_capacity: int = int(os.getenv("BEDROCK_BURST_CAPACITY", "10"))
+    bedrock_agent_max_rpm: int = int(os.getenv("BEDROCK_AGENT_MAX_RPM", "40"))
+    bedrock_model_max_rpm: int = int(os.getenv("BEDROCK_MODEL_MAX_RPM", "60"))
+    
+    # Request Queue Configuration
+    max_concurrent_requests: int = int(os.getenv("MAX_CONCURRENT_REQUESTS", "2"))
+    request_processing_delay: float = float(os.getenv("REQUEST_PROCESSING_DELAY", "0.8"))
 
 settings = Settings()

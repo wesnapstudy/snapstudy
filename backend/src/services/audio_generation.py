@@ -232,7 +232,7 @@ class AudioMicroLessonGenerator:
         
         try:
             response = await self.bedrock.invoke_claude(
-                prompt, max_tokens=3000, temperature=0.3, system_prompt=system_prompt
+                prompt, max_tokens=4096, temperature=0.3, system_prompt=system_prompt
             )
             return json.loads(response.strip())
         except Exception as e:

@@ -140,14 +140,14 @@ class TestBedrockService:
         
         response = await mock_bedrock_service.invoke_claude(
             prompt=test_prompt,
-            max_tokens=50,
+            max_tokens=4096,
             temperature=0.1
         )
         
         assert response == expected_response
         mock_bedrock_service.invoke_claude.assert_called_once_with(
             prompt=test_prompt,
-            max_tokens=50,
+            max_tokens=4096,
             temperature=0.1
         )
     

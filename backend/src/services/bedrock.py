@@ -10,6 +10,9 @@ import logging
 import asyncio
 
 from ..config import settings
+from ..utils.token_counter import token_counter
+from ..utils.rate_limiter import bedrock_rate_limiter
+from ..utils.bedrock_coordinator import bedrock_coordinator
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +24,12 @@ class BedrockService:
         self.bedrock_client = boto3.client('bedrock-runtime', region_name=settings.aws_region)
         self.model_id = settings.bedrock_model_id
         
-        # Retry configuration
-        self.max_retries = 5
-        self.base_delay = 1.0  # Base delay in seconds
-        self.max_delay = 60.0  # Maximum delay in seconds
-        self.backoff_multiplier = 2.0
-        self.jitter_range = 0.1  # Add randomness to prevent thundering herd
+        # Enhanced retry configuration for throttling
+        self.max_retries = 6  # Increased for throttling scenarios
+        self.base_delay = 2.0  # Longer initial delay
+        self.max_delay = 120.0  # Longer max delay for severe throttling
+        self.backoff_multiplier = 2.5  # More aggressive backoff
+        self.jitter_range = 0.2  # More jitter to spread requests
     
     def _calculate_delay(self, attempt: int) -> float:
         """Calculate exponential backoff delay with jitter."""
@@ -52,7 +55,9 @@ class BedrockService:
             'ServiceUnavailableException',
             'InternalServerError',
             'InternalFailure',
-            'ServiceQuotaExceededException'
+            'ServiceQuotaExceededException',
+            'ModelTimeoutException',
+            'ModelNotReadyException'
         ]
         return error_code in retryable_codes
     
@@ -126,11 +131,20 @@ class BedrockService:
     async def invoke_claude(
         self, 
         prompt: str, 
-        max_tokens: int = 4000,
+        max_tokens: int = 4096,
         temperature: float = 0.7,
         system_prompt: Optional[str] = None
     ) -> str:
         """Invoke Claude 4 model with a prompt and retry logic."""
+        
+        # Log input token usage
+        full_input = f"{system_prompt or ''}\n\n{prompt}"
+        input_stats = token_counter.estimate_tokens_detailed(full_input)
+        logger.info(
+            f"🧠 Claude Input: {input_stats['estimated_tokens']} tokens "
+            f"({input_stats['characters']} chars, {input_stats['words']} words) "
+            f"| Max Output: {max_tokens} tokens"
+        )
         
         def _invoke_model():
             """Internal function to invoke the model (for retry logic)."""
@@ -160,14 +174,29 @@ class BedrockService:
             response_body = json.loads(response['body'].read())
             
             if 'content' in response_body and response_body['content']:
-                return response_body['content'][0]['text']
+                output_text = response_body['content'][0]['text']
+                
+                # Log complete token usage
+                token_counter.log_token_usage(
+                    operation="bedrock_claude_invoke",
+                    input_text=full_input,
+                    output_text=output_text,
+                    model_id=self.model_id
+                )
+                
+                return output_text
             else:
                 logger.error(f"Unexpected response format: {response_body}")
                 raise ValueError("Invalid response format from Claude")
         
         try:
-            # Use retry logic for the model invocation
-            return await self._retry_with_backoff(_invoke_model)
+            # Use coordinator to space out the request, then apply retry logic
+            async def _coordinated_invoke():
+                return await self._retry_with_backoff(_invoke_model)
+            
+            return await bedrock_coordinator.execute_bedrock_request(
+                'model', _coordinated_invoke
+            )
             
         except ClientError as e:
             logger.error(f"Bedrock API error after retries: {e}")
@@ -208,7 +237,7 @@ class BedrockService:
         """
         
         try:
-            response = await self.invoke_claude(prompt, max_tokens=4000, temperature=0.3, system_prompt=system_prompt)
+            response = await self.invoke_claude(prompt, max_tokens=4096, temperature=0.3, system_prompt=system_prompt)
             
             # Parse JSON response
             analysis = json.loads(response.strip())
@@ -276,7 +305,7 @@ class BedrockService:
         """
         
         try:
-            response = await self.invoke_claude(prompt, max_tokens=3000, temperature=0.7, system_prompt=system_prompt)
+            response = await self.invoke_claude(prompt, max_tokens=4096, temperature=0.7, system_prompt=system_prompt)
             micro_lesson = json.loads(response.strip())
             return micro_lesson
             
@@ -345,7 +374,7 @@ class BedrockService:
         """
         
         try:
-            response = await self.invoke_claude(prompt, max_tokens=2500, temperature=0.5, system_prompt=system_prompt)
+            response = await self.invoke_claude(prompt, max_tokens=4096, temperature=0.5, system_prompt=system_prompt)
             quiz = json.loads(response.strip())
             return quiz
             
@@ -385,7 +414,7 @@ class BedrockService:
         """
         
         try:
-            response = await self.invoke_claude(prompt, max_tokens=1000, temperature=0.3, system_prompt=system_prompt)
+            response = await self.invoke_claude(prompt, max_tokens=4096, temperature=0.3, system_prompt=system_prompt)
             evaluation = json.loads(response.strip())
             return evaluation
             
@@ -424,7 +453,7 @@ class BedrockService:
         """
         
         try:
-            response = await self.invoke_claude(prompt, max_tokens=500, temperature=0.7, system_prompt=system_prompt)
+            response = await self.invoke_claude(prompt, max_tokens=4096, temperature=0.7, system_prompt=system_prompt)
             return response.strip()
             
         except Exception as e:

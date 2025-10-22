@@ -1,72 +1,72 @@
 """
-Multi-Agent Orchestration Service using Agent Strands.
+Multi-Agent Orchestrator for SnapStudy - Coordinates Learning and Adaptive Agents
 
-This service coordinates multiple specialized agents working together in sequences
-(strands) to accomplish complex educational tasks. This demonstrates advanced
-multi-agent coordination for the AWS Autonomous AI Agent Hackathon.
-
-Agent Strands implement sophisticated workflows where agents pass context and
-results to each other, making autonomous decisions at each step without human
-intervention.
+This orchestrator enables true multi-agent collaboration where agents can:
+1. Communicate with each other
+2. Share context and decisions
+3. Coordinate responses
+4. Learn from each other's outputs
 """
 
 import asyncio
-import uuid
-from typing import Dict, List, Any, Optional, Callable
-from datetime import datetime, timezone
-from enum import Enum
+import json
 import logging
+from datetime import datetime, timezone
+from typing import Dict, List, Any, Optional, Tuple
+from enum import Enum
+import uuid
+import boto3
 
-from .adaptive_agent import adaptive_agent, BedrockAgentCore
 from .bedrock import bedrock_service
-from .quiz_engine import quiz_engine
-from .dynamodb import db_service
+from .dynamodb import dynamodb_service
+from ..config import settings
 
 logger = logging.getLogger(__name__)
 
 
-class StrandType(str, Enum):
-    """Types of agent strands available."""
-    CONTENT_GENERATION = "content_generation"
-    ASSESSMENT = "assessment"
-    PERSONALIZATION = "personalization"
+class AgentRole(str, Enum):
+    """Agent roles in the multi-agent system."""
+    LEARNING = "learning"      # Educational content and tutoring
+    ADAPTIVE = "adaptive"      # Performance analysis and adaptation
+    ORCHESTRATOR = "orchestrator"  # Coordination and decision routing
 
 
-class StrandStatus(str, Enum):
-    """Status of strand execution."""
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    PARTIAL = "partial"
-
-
-class AgentStrand:
+class MultiAgentOrchestrator:
     """
-    Represents a sequence of agent operations working together.
-
-    Each strand is a pipeline where:
-    1. Agents execute sequentially
-    2. Context is passed between agents
-    3. Each agent makes autonomous decisions
-    4. Results accumulate for final output
+    Orchestrates collaboration between Learning and Adaptive agents.
+    
+    This class manages:
+    - Agent-to-agent communication
+    - Context sharing between agents
+    - Coordinated decision making
+    - Multi-step reasoning workflows
     """
-
-    def __init__(self, name: str, strand_type: StrandType, agents: List[Dict[str, Any]]):
-        self.name = name
-        self.strand_type = strand_type
-        self.agents = agents
-        self.strand_id = str(uuid.uuid4())
-        self.results = []
-        self.status = StrandStatus.PENDING
-        self.started_at = None
-        self.completed_at = None
-        self.error = None
-
-    async def execute(self, initial_context: Dict[str, Any]) -> Dict[str, Any]:
+    
+    def __init__(self):
+        self.bedrock_agent_client = boto3.client('bedrock-agent-runtime', region_name=settings.aws_region)
+        
+        # Agent configurations
+        self.learning_agent_id = getattr(settings, 'learning_agent_id', None)
+        self.adaptive_agent_id = getattr(settings, 'adaptive_agent_id', None)
+        self.agent_alias_id = getattr(settings, 'bedrock_agent_alias_id', 'PRODUCTION')
+        
+        # Multi-agent session management
+        self.active_collaborations = {}
+        
+        logger.info(f"MultiAgentOrchestrator initialized - Learning: {self.learning_agent_id}, Adaptive: {self.adaptive_agent_id}")
+    
+    async def orchestrate_learning_interaction(
+        self, 
+        user_message: str, 
+        user_context: Dict[str, Any],
+        session_id: str
+    ) -> Dict[str, Any]:
         """
-        Execute the agent strand with context passing.
-
+        Orchestrate a learning interaction involving both agents.
+        
+        Flow:
+        1. Adaptive Agent analyzes user performance and context
+        2. Learning Agent receives adaptation recommendat
         Args:
             initial_context: Initial context for the first agent
 
@@ -467,7 +467,7 @@ Format as structured JSON."""
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=prompt,
-                max_tokens=2000,
+                max_tokens=4096,
                 temperature=0.7
             )
 
@@ -525,7 +525,7 @@ Generate 2-3 micro-lessons covering the key concepts."""
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=prompt,
-                max_tokens=3000,
+                max_tokens=4096,
                 temperature=0.7
             )
 
@@ -586,7 +586,7 @@ Provide:
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=prompt,
-                max_tokens=1000,
+                max_tokens=4096,
                 temperature=0.5
             )
 
@@ -649,7 +649,7 @@ Provide personalized version."""
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=prompt,
-                max_tokens=2500,
+                max_tokens=4096,
                 temperature=0.7
             )
 
@@ -707,7 +707,7 @@ Format as structured list."""
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=prompt,
-                max_tokens=1500,
+                max_tokens=4096,
                 temperature=0.5
             )
 

@@ -16,7 +16,7 @@ import uuid
 from ..config import settings
 from ..services.auth import auth_service
 from ..services.dynamodb import db_service
-from .routers import auth, users, lessons, content, ai_services, adaptive, quiz, chat, analytics, multimedia
+from .routers import auth, users, lessons, content, ai_services, adaptive, quiz, chat, analytics, multimedia, health
 
 # Import middleware and error handlers
 from ..middleware.error_handler import (
@@ -73,6 +73,7 @@ app.include_router(quiz.router, prefix="/api/v1/quiz", tags=["Quiz System"])
 app.include_router(chat.router, prefix="/api/v1/chat", tags=["Agentic Chat"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["Learning Analytics"])
 app.include_router(multimedia.router, prefix="/api/v1/multimedia", tags=["Multimedia Generation"])
+app.include_router(health.router, prefix="/api/v1/health", tags=["Health Monitoring"])
 
 @app.get("/")
 async def root():

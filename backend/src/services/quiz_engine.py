@@ -229,7 +229,7 @@ class QuizEngine:
             
             response = await self.bedrock.invoke_claude(
                 prompt=hint_prompt,
-                max_tokens=300,
+                max_tokens=4096,
                 temperature=0.7
             )
             
@@ -307,7 +307,7 @@ class QuizEngine:
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=analysis_prompt,
-                max_tokens=800,
+                max_tokens=4096,
                 temperature=0.3
             )
             
@@ -452,7 +452,7 @@ class QuizEngine:
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=question_prompt,
-                max_tokens=1000,
+                max_tokens=4096,
                 temperature=0.5
             )
             
@@ -587,7 +587,7 @@ class QuizEngine:
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=evaluation_prompt,
-                max_tokens=600,
+                max_tokens=4096,
                 temperature=0.3
             )
             
@@ -662,7 +662,7 @@ class QuizEngine:
         try:
             feedback = await self.bedrock.invoke_claude(
                 prompt=feedback_prompt,
-                max_tokens=400,
+                max_tokens=4096,
                 temperature=0.7
             )
             return feedback.strip()

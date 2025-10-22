@@ -493,7 +493,7 @@ I adapt to your learning style and provide personalized help. Just ask me anythi
         try:
             response = await self.bedrock.invoke_claude(
                 prompt=chat_prompt,
-                max_tokens=200,
+                max_tokens=4096,
                 temperature=0.7
             )
             

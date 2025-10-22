@@ -265,15 +265,8 @@ async def chat_websocket(websocket: WebSocket):
 
             # Extract data
             message = message_data.get('message', '')
-            user_id = message_data.get('user_id')
+            user_id = message_data.get('user_id', 'anonymous')  # Allow anonymous users
             lesson_id = message_data.get('lesson_id')
-
-            if not user_id:
-                await websocket.send_json({
-                    'error': 'user_id required',
-                    'success': False
-                })
-                continue
 
             if not message:
                 await websocket.send_json({
