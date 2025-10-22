@@ -6,9 +6,11 @@ Agents to autonomously recognize user intent, provide educational assistance, an
 engage in natural conversation without requiring special command syntax.
 """
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, status, Query, Request
+from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
+from decimal import Decimal
 import logging
 import json
 import uuid
@@ -27,6 +29,52 @@ router = APIRouter()
 
 # Initialize chat agent
 chat_agent = AgenticChatAgent()
+
+
+class ChatMessageRequest(BaseModel):
+    """Request model for chat messages."""
+    message: str
+    lesson_id: Optional[str] = None
+    session_id: Optional[str] = None
+
+
+@router.post("/debug")
+async def debug_chat_request(request: Request) -> Dict[str, Any]:
+    """Debug endpoint that can handle malformed JSON from UI."""
+    try:
+        body = await request.body()
+        raw_text = body.decode('utf-8')
+        logger.info(f"DEBUG: Raw body: {raw_text}")
+        
+        # Try normal JSON parsing first
+        try:
+            json_data = json.loads(raw_text)
+            return {"status": "success", "parsed_json": json_data}
+        except json.JSONDecodeError:
+            # Handle malformed JSON by fixing common issues
+            try:
+                # Fix unquoted keys like {message: "text"} -> {"message": "text"}
+                import re
+                fixed_json = re.sub(r'(\w+):', r'"\1":', raw_text)
+                logger.info(f"DEBUG: Fixed JSON: {fixed_json}")
+                
+                parsed_data = json.loads(fixed_json)
+                logger.info(f"DEBUG: Successfully parsed fixed JSON: {parsed_data}")
+                
+                return {
+                    "status": "fixed_and_parsed",
+                    "original": raw_text,
+                    "fixed": fixed_json,
+                    "parsed": parsed_data
+                }
+            except Exception as fix_error:
+                return {
+                    "status": "unfixable",
+                    "raw_body": raw_text,
+                    "error": str(fix_error)
+                }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 @router.post(
@@ -53,25 +101,41 @@ chat_agent = AgenticChatAgent()
     response_description="Agent response with intent and context"
 )
 async def send_chat_message(
-    message: str,
-    lesson_id: Optional[str] = None,
-    session_id: Optional[str] = None,
-    user: Dict[str, Any] = Depends(require_auth)
+    request: Request,
+    user: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Send a chat message to the autonomous agent.
 
     Args:
-        message: User's message
-        lesson_id: Optional lesson context
-        session_id: Optional chat session ID (creates new if not provided)
-        user: Authenticated user
+        request: Raw HTTP request (handles malformed JSON from UI)
+        user: Authenticated user (optional for anonymous chat)
 
     Returns:
         Dict containing agent response, recognized intent, and context
     """
     try:
-        user_id = user.get('user_id')
+        # Parse the potentially malformed JSON
+        body = await request.body()
+        raw_text = body.decode('utf-8')
+        
+        try:
+            # Try normal JSON parsing first
+            data = json.loads(raw_text)
+        except json.JSONDecodeError:
+            # Fix malformed JSON (unquoted keys)
+            import re
+            fixed_json = re.sub(r'(\w+):', r'"\1":', raw_text)
+            data = json.loads(fixed_json)
+        
+        user_id = 'anonymous'
+        if user is not None:
+            user_id = user.get('user_id', 'anonymous')
+        message = data.get('message', '')
+        lesson_id = data.get('lesson_id')
+        session_id = data.get('session_id')
+        
+        logger.info(f"Parsed message: '{message}'")
 
         # Validate message
         if not message or not message.strip():
@@ -104,10 +168,7 @@ async def send_chat_message(
         else:
             # Load chat history for context
             try:
-                history = await db_service.get_item(
-                    'ChatHistory',
-                    {'session_id': session_id}
-                )
+                history = await db_service.get_chat_session(session_id)
                 if history:
                     context['chat_history'] = history.get('messages', [])[-10:]  # Last 10 messages
             except Exception as e:
@@ -129,17 +190,21 @@ async def send_chat_message(
             response=response
         )
 
-        # Track engagement
-        await db_service.track_engagement({
-            'user_id': user_id,
-            'event_type': 'chat_interaction',
-            'event_data': {
-                'session_id': session_id,
-                'intent': response.get('intent'),
-                'confidence': response.get('confidence', 0.0),
-                'message_length': len(message)
-            }
-        })
+        # Track engagement (skip for anonymous users)
+        if user_id != 'anonymous':
+            try:
+                await db_service.track_engagement({
+                    'user_id': user_id,
+                    'event_type': 'chat_interaction',
+                    'event_data': {
+                        'session_id': session_id,
+                        'intent': response.get('intent'),
+                        'confidence': Decimal(str(response.get('confidence', 0.0))),
+                        'message_length': len(message)
+                    }
+                })
+            except Exception as e:
+                logger.warning(f"Could not track engagement for user {user_id}: {e}")
 
         return {
             'success': True,
@@ -147,7 +212,7 @@ async def send_chat_message(
             'message': message,
             'response': response.get('response'),
             'intent': response.get('intent'),
-            'confidence': response.get('confidence', 0.0),
+            'confidence': Decimal(str(response.get('confidence', 0.0))),
             'autonomous_recognition': response.get('autonomous', True),
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
@@ -606,17 +671,14 @@ async def _store_chat_message(
     """
     try:
         # Get existing history
-        history = await db_service.get_item(
-            'ChatHistory',
-            {'session_id': session_id}
-        )
+        history = await db_service.get_chat_session(session_id)
 
         # Create message entry
         message_entry = {
             'user_message': message,
             'agent_response': response.get('response'),
             'intent': response.get('intent'),
-            'confidence': response.get('confidence', 0.0),
+            'confidence': Decimal(str(response.get('confidence', 0.0))),
             'timestamp': datetime.now(timezone.utc).isoformat()
         }
 
@@ -629,23 +691,16 @@ async def _store_chat_message(
             if len(messages) > 100:
                 messages = messages[-100:]
 
-            await db_service.update_item(
-                table_name='ChatHistory',
-                key={'session_id': session_id},
-                updates={
-                    'messages': messages,
-                    'updated_at': datetime.now(timezone.utc).isoformat()
-                }
-            )
+            await db_service.update_chat_session(session_id, {
+                'messages': messages,
+                'updated_at': datetime.now(timezone.utc).isoformat()
+            })
         else:
             # Create new history
-            await db_service.put_item('ChatHistory', {
+            await db_service.create_chat_session({
                 'session_id': session_id,
                 'user_id': user_id,
-                'messages': [message_entry],
-                'created_at': datetime.now(timezone.utc).isoformat(),
-                'updated_at': datetime.now(timezone.utc).isoformat(),
-                'ttl': int((datetime.now(timezone.utc).timestamp() + 86400 * 90))  # 90 days
+                'messages': [message_entry]
             })
 
     except Exception as e:
