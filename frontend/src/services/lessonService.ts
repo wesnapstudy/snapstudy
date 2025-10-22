@@ -25,9 +25,7 @@ class LessonService {
       formData.append('file', file);
       
       const response = await api.post('/api/v1/lessons/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        // Don't set Content-Type header - let the browser set it automatically with boundary
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
@@ -38,6 +36,7 @@ class LessonService {
       
       return response.data;
     } catch (error) {
+      console.error('Upload error:', error);
       throw new Error('Failed to upload lesson');
     }
   }

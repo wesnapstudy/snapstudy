@@ -39,26 +39,23 @@ async def get_lessons(current_user: Dict[str, Any] = Depends(require_auth)):
     Returns a list of lessons owned by the authenticated user.
     """
     try:
-        # Mock data - replace with actual database query
-        mock_lessons = [
-            {
-                "lesson_id": "lesson-1",
-                "title": "Introduction to Python",
-                "subject": "Programming",
-                "created_at": "2025-10-15T10:00:00Z",
-                "status": "active",
-                "difficulty": "beginner"
-            },
-            {
-                "lesson_id": "lesson-2",
-                "title": "Data Structures",
-                "subject": "Computer Science",
-                "created_at": "2025-10-18T14:30:00Z",
-                "status": "active",
-                "difficulty": "intermediate"
-            }
-        ]
-        return mock_lessons
+        # Get real lessons from database
+        from ...services.dynamodb import db_service
+        user_lessons = await db_service.get_user_lessons(current_user["user_id"])
+        
+        # Format lessons for response
+        formatted_lessons = []
+        for lesson in user_lessons:
+            formatted_lessons.append({
+                "lesson_id": lesson["lesson_id"],
+                "title": lesson["title"],
+                "subject": lesson.get("subject", "General"),
+                "created_at": lesson["created_at"],
+                "status": lesson.get("status", "active"),
+                "difficulty": lesson.get("difficulty", "intermediate")
+            })
+        
+        return formatted_lessons
     except Exception as e:
         logger.error(f"Failed to get lessons: {str(e)}")
         raise HTTPException(
@@ -88,17 +85,35 @@ async def upload_lesson(
                 detail=f"File type not supported. Allowed types: {', '.join(allowed_types)}"
             )
 
-        # Mock response - replace with actual file processing
-        new_lesson = {
-            "lesson_id": f"lesson-{datetime.now().timestamp()}",
+        # Read file content
+        content = await file.read()
+        file_content = content.decode('utf-8') if file_ext in ['.txt'] else f"Uploaded file: {file.filename}"
+        
+        # Create lesson data for database
+        lesson_data = {
+            "user_id": current_user["user_id"],
             "title": file.filename.rsplit('.', 1)[0],
             "subject": "General",
-            "created_at": datetime.now().isoformat() + "Z",
-            "status": "processing",
-            "difficulty": "intermediate"
+            "content": file_content,
+            "difficulty": "intermediate",
+            "status": "active",
+            "file_type": file_ext,
+            "original_filename": file.filename
         }
-
-        return new_lesson
+        
+        # Save to database
+        from ...services.dynamodb import db_service
+        created_lesson = await db_service.create_lesson(lesson_data)
+        
+        # Return the created lesson
+        return {
+            "lesson_id": created_lesson["lesson_id"],
+            "title": created_lesson["title"],
+            "subject": created_lesson["subject"],
+            "created_at": created_lesson["created_at"],
+            "status": created_lesson["status"],
+            "difficulty": created_lesson["difficulty"]
+        }
     except HTTPException:
         raise
     except Exception as e:

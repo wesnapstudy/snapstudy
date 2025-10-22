@@ -48,9 +48,15 @@ api.interceptors.request.use(async (config) => {
     }
   }
 
-  // Sanitize request data
-  if (config.data) {
-    config.data = SecurityValidator.sanitizeRequestData(config.data);
+  // Handle file uploads - don't set Content-Type for FormData
+  if (config.data instanceof FormData) {
+    // Remove Content-Type header to let browser set it automatically with boundary
+    delete config.headers['Content-Type'];
+  } else {
+    // Sanitize request data for non-file uploads
+    if (config.data) {
+      config.data = SecurityValidator.sanitizeRequestData(config.data);
+    }
   }
 
   // Sanitize URL parameters
