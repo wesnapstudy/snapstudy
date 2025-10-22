@@ -41,7 +41,7 @@ class JWTService:
         else:
             expire = datetime.now(timezone.utc) + timedelta(hours=self.expiration_hours)
         
-        # Prepare token payload
+        # Prepare token payload (keep it simple and compatible)
         payload = {
             'user_id': user_data.get('user_id'),
             'email': user_data.get('email'),
@@ -97,7 +97,7 @@ class JWTService:
             Decoded token payload if valid, None if invalid
         """
         try:
-            # Decode and validate token
+            # Decode and validate token (simple approach)
             payload = jwt.decode(
                 token,
                 self.secret_key,
@@ -134,7 +134,7 @@ class JWTService:
             Decoded token payload if valid, None if invalid
         """
         try:
-            # Decode and validate refresh token
+            # Decode and validate refresh token (simple approach)
             payload = jwt.decode(
                 refresh_token,
                 self.secret_key,

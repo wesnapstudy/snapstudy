@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime, timedelta
 
-from ..dependencies import get_current_user
+from ...middleware.auth_middleware import require_auth
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class RecommendationResponse(BaseModel):
 
 
 @router.get("/dashboard", response_model=DashboardResponse)
-async def get_dashboard(current_user = Depends(get_current_user)):
+async def get_dashboard(current_user: Dict[str, Any] = Depends(require_auth)):
     """
     Get analytics dashboard data.
 
@@ -99,7 +99,7 @@ async def get_dashboard(current_user = Depends(get_current_user)):
 @router.get("/velocity", response_model=LearningVelocityResponse)
 async def get_learning_velocity(
     period: int = Query(7, description="Time period in days"),
-    current_user = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """
     Get learning velocity metrics.
@@ -127,7 +127,7 @@ async def get_learning_velocity(
 
 
 @router.get("/struggling-concepts", response_model=Dict[str, List[StrugglingConceptResponse]])
-async def get_struggling_concepts(current_user = Depends(get_current_user)):
+async def get_struggling_concepts(current_user: Dict[str, Any] = Depends(require_auth)):
     """
     Get concepts the user is struggling with.
 
@@ -167,7 +167,7 @@ async def get_struggling_concepts(current_user = Depends(get_current_user)):
 
 
 @router.get("/recommendations", response_model=Dict[str, List[RecommendationResponse]])
-async def get_recommendations(current_user = Depends(get_current_user)):
+async def get_recommendations(current_user: Dict[str, Any] = Depends(require_auth)):
     """
     Get personalized learning recommendations.
 
@@ -216,7 +216,7 @@ async def get_recommendations(current_user = Depends(get_current_user)):
 async def track_event(
     event_name: str,
     event_data: Dict[str, Any],
-    current_user = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """
     Track a learning event.

@@ -15,7 +15,7 @@ import uuid
 
 from ...services.chat_agent import AgenticChatAgent
 from ...services.dynamodb import db_service
-from ...api.dependencies import get_current_user
+from ...middleware.auth_middleware import require_auth
 from ...middleware.error_handler import (
     ResourceNotFoundError,
     ValidationError
@@ -56,7 +56,7 @@ async def send_chat_message(
     message: str,
     lesson_id: Optional[str] = None,
     session_id: Optional[str] = None,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Send a chat message to the autonomous agent.
@@ -324,7 +324,7 @@ async def chat_websocket(websocket: WebSocket):
 async def get_chat_session(
     session_id: str,
     limit: int = Query(default=50, ge=1, le=200),
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Get chat session history.
@@ -399,7 +399,7 @@ async def get_chat_session(
 )
 async def clear_chat_session(
     session_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Clear chat session history.
@@ -476,7 +476,7 @@ async def clear_chat_session(
 )
 async def list_chat_sessions(
     limit: int = Query(default=20, ge=1, le=100),
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     List user's chat sessions.

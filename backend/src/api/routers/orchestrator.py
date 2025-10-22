@@ -14,7 +14,7 @@ from datetime import datetime
 import logging
 
 from ...services.multi_agent_orchestrator import multi_agent_orchestrator, StrandType
-from ...api.dependencies import get_current_user
+from ...middleware.auth_middleware import require_auth
 from ...middleware.error_handler import ValidationError
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ router = APIRouter()
 async def execute_content_generation_strand(
     topic: str,
     difficulty: str = "intermediate",
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Execute content generation strand.
@@ -114,7 +114,7 @@ async def execute_content_generation_strand(
 async def execute_assessment_strand(
     lesson_content: str,
     previous_scores: Optional[List[float]] = None,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Execute assessment generation strand.
@@ -187,7 +187,7 @@ async def execute_assessment_strand(
 )
 async def execute_personalization_strand(
     learning_goals: List[str],
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Execute personalization strand.
@@ -263,7 +263,7 @@ async def execute_personalization_strand(
 )
 async def get_strand_status(
     strand_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Get strand execution status.

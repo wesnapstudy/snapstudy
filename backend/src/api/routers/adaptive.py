@@ -13,7 +13,7 @@ import logging
 
 from ...services.adaptive_agent import adaptive_agent
 from ...services.dynamodb import db_service
-from ...api.dependencies import get_current_user
+from ...middleware.auth_middleware import require_auth
 from ...middleware.error_handler import (
     ResourceNotFoundError,
     ValidationError,
@@ -43,7 +43,7 @@ router = APIRouter()
 )
 async def start_adaptive_lesson(
     lesson_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Start an autonomous adaptive learning session.
@@ -117,7 +117,7 @@ async def start_adaptive_lesson(
 async def get_next_micro_lesson(
     session_id: str,
     previous_performance: Optional[Dict[str, Any]] = None,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Get next micro-lesson with autonomous adaptation.
@@ -200,7 +200,7 @@ async def submit_quiz_and_adapt(
     answers: Dict[str, str],
     time_spent: int,
     engagement_metrics: Optional[Dict[str, Any]] = None,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Submit quiz and get autonomous adaptation decision.
@@ -307,7 +307,7 @@ async def submit_quiz_and_adapt(
 async def get_adaptation_history(
     session_id: str,
     limit: int = Query(default=10, ge=1, le=50),
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Get adaptation decision history for a session.
@@ -386,7 +386,7 @@ async def get_adaptation_history(
 async def analyze_performance(
     lesson_id: Optional[str] = None,
     time_period_days: int = Query(default=7, ge=1, le=90),
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Analyze user's learning performance.
@@ -491,7 +491,7 @@ async def analyze_performance(
 )
 async def get_learning_state(
     session_id: str,
-    user: Dict[str, Any] = Depends(get_current_user)
+    user: Dict[str, Any] = Depends(require_auth)
 ) -> Dict[str, Any]:
     """
     Get current learning state for a session.

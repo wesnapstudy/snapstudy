@@ -5,7 +5,7 @@ from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
 
-from ..dependencies import get_current_user
+from ...middleware.auth_middleware import require_auth
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class MicroLessonResponse(BaseModel):
 
 
 @router.get("/", response_model=List[LessonResponse])
-async def get_lessons(current_user = Depends(get_current_user)):
+async def get_lessons(current_user: Dict[str, Any] = Depends(require_auth)):
     """
     Get all lessons for the current user.
 
@@ -70,7 +70,7 @@ async def get_lessons(current_user = Depends(get_current_user)):
 @router.post("/upload", response_model=LessonResponse, status_code=status.HTTP_201_CREATED)
 async def upload_lesson(
     file: UploadFile = File(...),
-    current_user = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """
     Upload a new lesson file.
@@ -112,7 +112,7 @@ async def upload_lesson(
 @router.get("/{lesson_id}", response_model=LessonResponse)
 async def get_lesson(
     lesson_id: str,
-    current_user = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """
     Get a specific lesson by ID.
@@ -141,7 +141,7 @@ async def get_lesson(
 @router.get("/{lesson_id}/micro-lessons", response_model=List[MicroLessonResponse])
 async def get_micro_lessons(
     lesson_id: str,
-    current_user = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """
     Get all micro-lessons for a specific lesson.
@@ -188,7 +188,7 @@ async def get_micro_lessons(
 @router.delete("/{lesson_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_lesson(
     lesson_id: str,
-    current_user = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """
     Delete a lesson.

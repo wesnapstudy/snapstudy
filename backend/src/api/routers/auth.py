@@ -91,7 +91,7 @@ async def register(user_data: UserRegistration):
         
         await db_service.create_user(user_item)
         
-        # Create access token
+        # Create access and refresh tokens
         user_token_data = {
             'user_id': user_id,
             'email': user_data.email,
@@ -99,15 +99,17 @@ async def register(user_data: UserRegistration):
             'onboarding_completed': False
         }
         access_token = jwt_service.generate_token(user_token_data)
+        refresh_token = jwt_service.generate_refresh_token(user_token_data)
         
         logger.info(f"User registered successfully: {user_data.email}")
         
-        return AuthToken(
-            access_token=access_token,
-            token_type="bearer",
-            expires_in=settings.jwt_expiration_hours * 3600,
-            user_id=user_id
-        )
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": settings.jwt_expiration_hours * 3600,
+            "user_id": user_id
+        }
         
     except (ResourceConflictError, ValidationError):
         raise
@@ -136,7 +138,7 @@ async def login(user_data: UserLogin):
         if not user.get("is_active", False):
             raise AuthenticationError("Account is deactivated")
         
-        # Create access token
+        # Create access and refresh tokens
         user_token_data = {
             'user_id': user["user_id"],
             'email': user["email"],
@@ -144,15 +146,17 @@ async def login(user_data: UserLogin):
             'onboarding_completed': user.get("onboarding_completed", False)
         }
         access_token = jwt_service.generate_token(user_token_data)
+        refresh_token = jwt_service.generate_refresh_token(user_token_data)
         
         logger.info(f"User logged in successfully: {user_data.email}")
         
-        return AuthToken(
-            access_token=access_token,
-            token_type="bearer",
-            expires_in=settings.jwt_expiration_hours * 3600,
-            user_id=user["user_id"]
-        )
+        return {
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": settings.jwt_expiration_hours * 3600,
+            "user_id": user["user_id"]
+        }
         
     except AuthenticationError:
         raise
@@ -171,6 +175,71 @@ async def logout():
     Invalidates the current session/token.
     """
     return {"message": "Logged out successfully"}
+
+@router.post("/refresh")
+async def refresh_token(refresh_data: dict):
+    """
+    Refresh access token using refresh token.
+    
+    Args:
+        refresh_data: Dictionary containing refresh_token
+        
+    Returns:
+        New access token and optionally new refresh token
+    """
+    try:
+        refresh_token = refresh_data.get("refresh_token")
+        if not refresh_token:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Refresh token is required"
+            )
+        
+        # Validate refresh token using proper method
+        payload = jwt_service.validate_refresh_token(refresh_token)
+        if not payload:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or expired refresh token"
+            )
+        
+        # Get fresh user data
+        user = await db_service.get_user_by_id(payload.get("user_id"))
+        if not user or not user.get("is_active", False):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found or inactive"
+            )
+        
+        # Generate new tokens using JWT service
+        user_token_data = {
+            'user_id': user["user_id"],
+            'email': user["email"],
+            'full_name': user.get("full_name", ""),
+            'onboarding_completed': user.get("onboarding_completed", False)
+        }
+        
+        # Use the JWT service refresh method
+        token_response = jwt_service.refresh_access_token(refresh_token, user_token_data)
+        
+        # Generate new refresh token for token rotation
+        new_refresh_token = jwt_service.generate_refresh_token(user_token_data)
+        
+        logger.info(f"Token refreshed for user: {user['email']}")
+        
+        return {
+            **token_response,
+            "refresh_token": new_refresh_token
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Token refresh failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Token refresh failed"
+        )
 
 @router.get("/verify")
 async def verify_token_endpoint(token: str = Depends(verify_token)):
