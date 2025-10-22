@@ -45,14 +45,14 @@ class AuthService {
     if (profileUser) {
       // Store profile user flag and user data securely
       await SecureStorage.setItem(this.profileUserKey, true, { encrypt: true });
-      await SecureStorage.setItem(this.userDataKey, profileUser, { 
-        encrypt: true, 
+      await SecureStorage.setItem(this.userDataKey, profileUser, {
+        encrypt: true,
         expirationMinutes: 480 // 8 hours
       });
-      
+
       // Start session management
       SessionManager.startSession(480); // 8 hours
-      
+
       console.log('Logged in as profile user');
       return { user: profileUser, token: 'profile-token' };
     }
@@ -63,14 +63,14 @@ class AuthService {
       const { access_token, refresh_token } = response.data;
 
       // Store tokens securely with encryption
-      await SecureStorage.setItem(this.tokenKey, access_token, { 
-        encrypt: true, 
+      await SecureStorage.setItem(this.tokenKey, access_token, {
+        encrypt: true,
         expirationMinutes: 60 // 1 hour for access token
       });
-      
+
       if (refresh_token) {
-        await SecureStorage.setItem(this.refreshTokenKey, refresh_token, { 
-          encrypt: true, 
+        await SecureStorage.setItem(this.refreshTokenKey, refresh_token, {
+          encrypt: true,
           expirationMinutes: 10080 // 7 days for refresh token
         });
       }
@@ -80,8 +80,8 @@ class AuthService {
 
       // Get user data separately and store securely
       const user = await this.getCurrentUser();
-      await SecureStorage.setItem(this.userDataKey, user, { 
-        encrypt: true, 
+      await SecureStorage.setItem(this.userDataKey, user, {
+        encrypt: true,
         expirationMinutes: 480 // 8 hours
       });
 
@@ -114,18 +114,29 @@ class AuthService {
       }
     }
 
-    // Otherwise, get from API with caching
+    // Get user data from JWT token and cached data
     try {
-      const user = await cachedApiCall<User>(
-        'user:current',
-        async () => {
-          const response = await api.get('/api/v1/users/me');
-          return response.data;
-        },
-        { ttl: 5 * 60 * 1000 } // Cache for 5 minutes
-      );
+      const token = await this.getToken();
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
 
-      // Cache user data securely
+      // Decode JWT token to get user info (without verification for client-side)
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      
+      // Check if we have cached user data with onboarding status
+      const cachedUser = await SecureStorage.getItem(this.userDataKey);
+      
+      const user: User = {
+        id: payload.user_id,
+        email: payload.email,
+        full_name: payload.full_name || '',
+        onboarding_completed: cachedUser?.onboarding_completed || payload.onboarding_completed || false,
+        // Include other cached user data if available
+        ...cachedUser
+      };
+
+      // Update cache with latest data
       await SecureStorage.setItem(this.userDataKey, user, {
         encrypt: true,
         expirationMinutes: 480
@@ -154,8 +165,8 @@ class AuthService {
 
     // If API URL is not properly configured, skip authentication
     if (!config.api.baseUrl ||
-        config.api.baseUrl.includes('PLACEHOLDER') ||
-        config.api.baseUrl.includes('your-api-domain.com')) {
+      config.api.baseUrl.includes('PLACEHOLDER') ||
+      config.api.baseUrl.includes('your-api-domain.com')) {
       return false;
     }
 
@@ -169,7 +180,7 @@ class AuthService {
     await SecureStorage.removeItem(this.refreshTokenKey);
     await SecureStorage.removeItem(this.profileUserKey);
     await SecureStorage.removeItem(this.userDataKey);
-    
+
     // Clear session
     SessionManager.clearSession();
 
@@ -190,8 +201,22 @@ class AuthService {
 
   async completeOnboarding(onboardingData: OnboardingData): Promise<User> {
     try {
-      const response = await api.post('/api/v1/users/onboarding', onboardingData);
-      return response.data.user;
+      // For now, just mark onboarding as completed locally
+      // In a real app, you would send this to the backend
+      const currentUser = await this.getCurrentUser();
+      const updatedUser = {
+        ...currentUser,
+        ...onboardingData,
+        onboarding_completed: true
+      };
+      
+      // Cache the updated user data
+      await SecureStorage.setItem(this.userDataKey, updatedUser, {
+        encrypt: true,
+        expirationMinutes: 480
+      });
+      
+      return updatedUser;
     } catch (error) {
       throw new Error('Failed to complete onboarding');
     }

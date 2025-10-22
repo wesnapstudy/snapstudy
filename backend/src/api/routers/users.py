@@ -5,47 +5,18 @@ import logging
 
 from ...models.user import UserPreferences, UserProfileUpdate
 from ...services.dynamodb import db_service
-from ...middleware.auth_middleware import get_current_user
+from ...middleware.auth_middleware import require_auth
 from ...middleware.error_handler import ValidationError, ResourceNotFoundError
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/me")
-async def get_current_user_profile(current_user: Dict[str, Any] = Depends(get_current_user)):
-    """Get current user profile."""
-    try:
-        user = await db_service.get_user_by_id(current_user["user_id"])
-        if not user:
-            raise ResourceNotFoundError("User", "user_id", current_user["user_id"])
-        
-        return {
-            "user_id": user["user_id"],
-            "email": user["email"],
-            "full_name": user.get("full_name"),
-            "age": user.get("age"),
-            "profession": user.get("profession"),
-            "education_level": user.get("education_level"),
-            "country": user.get("country"),
-            "onboarding_completed": user.get("onboarding_completed", False),
-            "preferences": user.get("preferences"),
-            "created_at": user["created_at"],
-            "updated_at": user["updated_at"]
-        }
-    except (ResourceNotFoundError, ValidationError):
-        raise
-    except Exception as e:
-        logger.error(f"Error getting user profile: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get user profile"
-        )
 
 @router.put("/profile")
 async def update_user_profile(
     profile_data: UserProfileUpdate,
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """Update user profile."""
     try:
@@ -80,7 +51,7 @@ async def update_user_profile(
 @router.post("/onboarding")
 async def complete_onboarding(
     onboarding_data: Dict[str, Any],
-    current_user: Dict[str, Any] = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(require_auth)
 ):
     """Complete user onboarding."""
     try:

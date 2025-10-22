@@ -1,5 +1,8 @@
 """DynamoDB service for data operations."""
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from typing import Dict, List, Optional, Any
@@ -317,10 +320,9 @@ class DynamoDBService:
             if not email:
                 raise ValidationError("Email is required")
             
-            # Use email-index GSI (assuming it exists)
-            response = self.users_table.query(
-                IndexName='email-index',
-                KeyConditionExpression=Key('email').eq(email)
+            # Use scan operation for development (less efficient but works without GSI)
+            response = self.users_table.scan(
+                FilterExpression=Attr('email').eq(email)
             )
             
             items = response.get('Items', [])

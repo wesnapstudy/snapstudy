@@ -7,7 +7,7 @@ for protected routes, and comprehensive error handling for authentication failur
 
 import logging
 from typing import Optional, Dict, Any, Set
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -130,8 +130,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # Get additional user data from database
         try:
             # Lazy import to avoid circular dependency
-            from ..services.dynamodb import dynamodb_service
-            user_data = await dynamodb_service.get_user_by_id(user_id)
+            from ..services.dynamodb import db_service
+            user_data = await db_service.get_user_by_id(user_id)
             if not user_data:
                 logger.warning(f"User {user_id} not found in database")
                 return None
@@ -258,83 +258,35 @@ class EnhancedHTTPBearer(HTTPBearer):
             )
 
 
-class RequireAuth:
-    """Dependency for requiring authentication on specific endpoints."""
-
-    def __init__(self, require_active: bool = True, require_onboarding: bool = False):
-        self.require_active = require_active
-        self.require_onboarding = require_onboarding
-        self.bearer = EnhancedHTTPBearer()
-
-    async def __call__(self, request: Request) -> Dict[str, Any]:
-        """
-        Validate authentication and return user context.
+async def simple_require_auth(credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer())) -> Dict[str, Any]:
+    """
+    Simple authentication dependency that validates JWT token.
+    
+    Returns:
+        User context from JWT token
         
-        Args:
-            request: FastAPI request object
-            
-        Returns:
-            User context dictionary
-            
-        Raises:
-            HTTPException: On authentication or authorization failure
-        """
-        # Validate bearer token
-        credentials = await self.bearer(request)
-        
-        # Get user context from request state
-        user_context = getattr(request.state, 'user', None)
-        
-        if not user_context:
-            # Fetch user data if not already in context
-            user_id = getattr(request.state, 'user_id', None)
-            if user_id:
-                try:
-                    # Lazy import to avoid circular dependency
-                    from ..services.dynamodb import dynamodb_service
-                    user_data = await dynamodb_service.get_user_by_id(user_id)
-                    if user_data:
-                        user_context = {
-                            'user_id': user_id,
-                            'email': getattr(request.state, 'user_email', ''),
-                            'full_name': user_data.get('full_name', ''),
-                            'is_active': user_data.get('is_active', True),
-                            'onboarding_completed': user_data.get('onboarding_completed', False),
-                            'preferences': user_data.get('preferences', {}),
-                            'token_payload': getattr(request.state, 'token_payload', {})
-                        }
-                        request.state.user = user_context
-                except Exception as e:
-                    logger.error(f"Error fetching user data: {str(e)}")
-                    raise HTTPException(
-                        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                        detail="Failed to retrieve user information"
-                    )
-
-        if not user_context:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="User context not available"
-            )
-
-        # Check if user account is active
-        if self.require_active and not user_context.get('is_active', True):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Account is inactive"
-            )
-
-        # Check if onboarding is required
-        if self.require_onboarding and not user_context.get('onboarding_completed', False):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Onboarding must be completed to access this resource"
-            )
-
-        return user_context
+    Raises:
+        HTTPException: On authentication failure
+    """
+    from ..services.jwt_service import jwt_service
+    
+    token = credentials.credentials
+    payload = jwt_service.validate_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return {
+        'user_id': payload.get('user_id'),
+        'email': payload.get('email'),
+        'full_name': payload.get('full_name', '')
+    }
 
 
 # Global instances for dependency injection
-require_auth = RequireAuth()
-require_auth_with_onboarding = RequireAuth(require_onboarding=True)
+require_auth = simple_require_auth
 enhanced_bearer = EnhancedHTTPBearer()

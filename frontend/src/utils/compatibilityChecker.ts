@@ -597,17 +597,14 @@ export class FrontendCompatibilityChecker {
     try {
       // Test User type compatibility
       const testUser: User = {
-        user_id: 'test-123',
+        id: 'test-123',
         email: 'test@example.com',
         full_name: 'Test User',
         age: 25,
         profession: 'Developer',
         education_level: "Bachelor's",
         country: 'US',
-        onboarding_completed: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        is_active: true
+        onboarding_completed: true
       };
 
       return {

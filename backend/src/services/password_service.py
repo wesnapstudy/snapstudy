@@ -28,47 +28,39 @@ class PasswordService:
         return secrets.token_hex(32)  # 64 character hex string (32 bytes)
 
     @staticmethod
-    def hash_password(password: str, salt: str = None) -> Tuple[str, str]:
+    def hash_password(password: str) -> str:
         """
-        Hash password using SHA-256 with salt.
+        Hash password using SHA-256.
         
         Args:
             password: Plain text password
-            salt: Optional salt (generates new one if not provided)
             
         Returns:
-            Tuple of (hashed_password, salt)
+            Hashed password
         """
-        if salt is None:
-            salt = PasswordService.generate_salt()
-        
-        # Combine password and salt
-        salted_password = password + salt
-        
-        # Hash using SHA-256
-        password_hash = hashlib.sha256(salted_password.encode('utf-8')).hexdigest()
+        # Simple hash using SHA-256
+        password_hash = hashlib.sha256(password.encode('utf-8')).hexdigest()
         
         logger.debug("Password hashed successfully")
-        return password_hash, salt
+        return password_hash
 
     @staticmethod
-    def verify_password(password: str, stored_hash: str, salt: str) -> bool:
+    def verify_password(password: str, stored_hash: str) -> bool:
         """
-        Verify password against stored hash and salt.
+        Verify password against stored hash.
         
         Args:
             password: Plain text password to verify
             stored_hash: Stored password hash
-            salt: Salt used for original hash
             
         Returns:
             True if password matches, False otherwise
         """
-        # Hash the provided password with the stored salt
-        computed_hash, _ = PasswordService.hash_password(password, salt)
+        # Hash the provided password
+        computed_hash = PasswordService.hash_password(password)
         
-        # Compare hashes using constant-time comparison to prevent timing attacks
-        return secrets.compare_digest(computed_hash, stored_hash)
+        # Compare hashes
+        return computed_hash == stored_hash
 
     @staticmethod
     def validate_password_strength(password: str) -> Dict[str, Any]:

@@ -293,7 +293,7 @@ export function usePerformanceMonitor(operation?: string) {
     return unsubscribe;
   }, []);
 
-  const measureAsync = useCallback(async <T>(
+  const measureAsync = useCallback(async <T extends any>(
     fn: () => Promise<T>,
     operationName?: string,
     metadata?: Record<string, any>
@@ -302,7 +302,7 @@ export function usePerformanceMonitor(operation?: string) {
     return performanceMonitor.measureAsync(opName, fn, metadata);
   }, [operation]);
 
-  const measureSync = useCallback(<T>(
+  const measureSync = useCallback(<T extends any>(
     fn: () => T,
     operationName?: string,
     metadata?: Record<string, any>
@@ -407,28 +407,7 @@ export class AuthPerformanceUtils {
   }
 
   // Optimized user profile loading with caching
-  static async loadUserProfileCached(userId: string): Promise<any> {
-    const cacheKey = `user_profile_${userId}`;
-    
-    const cached = performanceMonitor.getCache(cacheKey);
-    if (cached) {
-      return cached;
-    }
-
-    const profile = await performanceMonitor.measureAsync(
-      'load_user_profile',
-      async () => {
-        const response = await fetch('/api/v1/users/me', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('auth_token')}` }
-        });
-        return response.json();
-      }
-    );
-
-    // Cache for 10 minutes
-    performanceMonitor.setCache(cacheKey, profile, 600000);
-    return profile;
-  }
+  // Removed loadUserProfileCached method - no longer needed
 
   // Debounced profile update to prevent excessive API calls
   static debounceProfileUpdate = (() => {

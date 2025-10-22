@@ -3,9 +3,7 @@
 from .auth_middleware import (
     AuthenticationMiddleware,
     EnhancedHTTPBearer,
-    RequireAuth,
     require_auth,
-    require_auth_with_onboarding,
     enhanced_bearer
 )
 from .security import (
@@ -30,9 +28,7 @@ __all__ = [
     # Authentication middleware
     'AuthenticationMiddleware',
     'EnhancedHTTPBearer', 
-    'RequireAuth',
     'require_auth',
-    'require_auth_with_onboarding',
     'enhanced_bearer',
     
     # Security middleware

@@ -19,7 +19,7 @@ import {
   handleNetworkError 
 } from '../utils/loadingStateManager';
 import { useNetworkStatus, executeWithNetworkFallback } from '../utils/networkStatusManager';
-import { ErrorCode } from '../utils/errorMessages';
+
 
 // Enhanced authentication state interface
 interface AuthState {
@@ -251,9 +251,9 @@ export function EnhancedAuthProvider({ children }: { children: ReactNode }) {
       }
 
       const user = await executeWithNetworkFallback(
-        () => authService.verifyToken(token),
+        () => authService.getCurrentUser(),
         undefined,
-        'verifyToken'
+        'getCurrentUser'
       );
 
       if (user) {
@@ -287,13 +287,13 @@ export function EnhancedAuthProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_LOADING', payload: true });
 
         const result = await executeWithNetworkFallback(
-          () => authService.login(email, password),
+          () => authService.login({ email, password }),
           undefined,
           'login'
         );
 
-        if (result.access_token && result.user) {
-          localStorage.setItem('auth_token', result.access_token);
+        if (result.token && result.user) {
+          localStorage.setItem('auth_token', result.token);
           
           dispatch({ 
             type: 'LOGIN_SUCCESS', 
@@ -354,30 +354,19 @@ export function EnhancedAuthProvider({ children }: { children: ReactNode }) {
 
         dispatch({ type: 'SET_LOADING', payload: true });
 
-        const result = await executeWithNetworkFallback(
+        await executeWithNetworkFallback(
           () => authService.register(userData),
           undefined,
           'register'
         );
 
-        if (result.access_token && result.user) {
-          localStorage.setItem('auth_token', result.access_token);
-          
-          dispatch({ 
-            type: 'LOGIN_SUCCESS', 
-            payload: { 
-              user: result.user,
-              sessionExpiry: Date.now() + 24 * 60 * 60 * 1000
-            } 
-          });
+        // Registration successful, but user needs to login
+        dispatch({ type: 'SET_LOADING', payload: false });
 
-          notifications.success(
-            'Account Created!',
-            'Welcome to SnapStudy! Let\'s get you set up.'
-          );
-        } else {
-          throw new Error('Invalid response from server');
-        }
+        notifications.success(
+          'Account Created!',
+          'Welcome to SnapStudy! Let\'s get you set up.'
+        );
       } catch (error: any) {
         const errorMessage = error.response?.data?.user_message || 
                            error.message || 
@@ -558,7 +547,7 @@ export function EnhancedAuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      const user = await authService.verifyToken(token);
+      const user = await authService.getCurrentUser();
       if (user) {
         dispatch({ 
           type: 'SET_USER', 

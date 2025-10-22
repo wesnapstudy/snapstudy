@@ -46,6 +46,7 @@ class JWTService:
             'user_id': user_data.get('user_id'),
             'email': user_data.get('email'),
             'full_name': user_data.get('full_name', ''),
+            'onboarding_completed': user_data.get('onboarding_completed', False),
             'exp': expire,
             'iat': datetime.now(timezone.utc),
             'type': 'access'

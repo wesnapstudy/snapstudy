@@ -1,5 +1,8 @@
 """Main FastAPI application for SnapStudy backend."""
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -23,13 +26,7 @@ from ..middleware.error_handler import (
     validation_exception_handler,
     generic_exception_handler
 )
-from ..middleware.security import (
-    SecurityHeadersMiddleware,
-    RateLimitMiddleware,
-    RequestLoggingMiddleware,
-    CORSSecurityMiddleware,
-    enhanced_bearer
-)
+# Removed complex security middleware imports
 
 # Configure logging
 logging.basicConfig(
@@ -54,23 +51,16 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 
-# Add security middleware (order matters!)
-app.add_middleware(SecurityHeadersMiddleware)
-app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(RateLimitMiddleware, requests_per_minute=100, requests_per_hour=2000, burst_limit=20)
-app.add_middleware(CORSSecurityMiddleware, allowed_origins=set(settings.cors_origins))
-
-# Legacy CORS middleware for compatibility (will be overridden by CORSSecurityMiddleware)
+# Add simple CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# Import get_current_user from dependencies to avoid circular imports
-from .dependencies import get_current_user
+# Removed dependencies import
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
@@ -92,6 +82,11 @@ async def root():
         "version": settings.api_version,
         "status": "healthy"
     }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "ok", "timestamp": time.time()}
 
 @app.get("/health")
 async def health_check():

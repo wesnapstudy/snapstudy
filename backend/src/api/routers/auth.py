@@ -1,7 +1,7 @@
 """Authentication router."""
 
 from fastapi import APIRouter, HTTPException, status, Depends
-from fastapi.security import HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 import logging
 from datetime import datetime, timedelta
 import jwt
@@ -10,14 +10,37 @@ import traceback
 
 from ...models.user import UserRegistration, UserLogin, AuthToken, UserProfile
 from ...services.dynamodb import db_service
-from ...services.password_service import hash_password, verify_password
-from ...services.jwt_service import create_access_token, verify_token
+from ...services.password_service import PasswordService
+from ...services.jwt_service import jwt_service
 from ...config import settings
 from ...middleware.error_handler import AuthenticationError, ValidationError, ResourceConflictError
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+security = HTTPBearer()
+
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Dependency to verify JWT token from Authorization header.
+    
+    Returns:
+        Decoded token payload if valid
+        
+    Raises:
+        HTTPException: If token is invalid or expired
+    """
+    token = credentials.credentials
+    payload = jwt_service.validate_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return payload
 
 @router.post("/register", response_model=AuthToken)
 async def register(user_data: UserRegistration):
@@ -32,7 +55,7 @@ async def register(user_data: UserRegistration):
         
         # Generate user ID and hash password
         user_id = str(uuid.uuid4())
-        hashed_password = hash_password(user_data.password)
+        hashed_password = PasswordService.hash_password(user_data.password)
         
         # Use provided full_name or None
         full_name = user_data.full_name
@@ -60,6 +83,7 @@ async def register(user_data: UserRegistration):
             "profession": user_data.profession,
             "education_level": user_data.education_level,
             "country": user_data.country,
+            "onboarding_completed": False,
             "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
             "is_active": True
@@ -68,7 +92,13 @@ async def register(user_data: UserRegistration):
         await db_service.create_user(user_item)
         
         # Create access token
-        access_token = create_access_token(user_id, user_data.email)
+        user_token_data = {
+            'user_id': user_id,
+            'email': user_data.email,
+            'full_name': full_name,
+            'onboarding_completed': False
+        }
+        access_token = jwt_service.generate_token(user_token_data)
         
         logger.info(f"User registered successfully: {user_data.email}")
         
@@ -98,7 +128,8 @@ async def login(user_data: UserLogin):
             raise AuthenticationError("Invalid email or password")
         
         # Verify password
-        if not verify_password(user_data.password, user.get("password_hash", "")):
+        password_hash = user.get("password_hash", "")
+        if not PasswordService.verify_password(user_data.password, password_hash):
             raise AuthenticationError("Invalid email or password")
         
         # Check if user is active
@@ -106,7 +137,13 @@ async def login(user_data: UserLogin):
             raise AuthenticationError("Account is deactivated")
         
         # Create access token
-        access_token = create_access_token(user["user_id"], user["email"])
+        user_token_data = {
+            'user_id': user["user_id"],
+            'email': user["email"],
+            'full_name': user.get("full_name", ""),
+            'onboarding_completed': user.get("onboarding_completed", False)
+        }
+        access_token = jwt_service.generate_token(user_token_data)
         
         logger.info(f"User logged in successfully: {user_data.email}")
         
