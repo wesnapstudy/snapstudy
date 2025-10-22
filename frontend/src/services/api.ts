@@ -85,9 +85,23 @@ api.interceptors.response.use(
   (error: AxiosError) => {
     // Handle authentication errors
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
+      // Don't reload if already on login page to prevent infinite loops
+      const isOnLoginPage = window.location.pathname.includes('/login') ||
+                            window.location.pathname === '/';
+
+      if (!isOnLoginPage) {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+
+        // Dispatch custom event instead of direct navigation
+        // This allows App component to handle the navigation properly
+        window.dispatchEvent(new CustomEvent('auth:expired', {
+          detail: { error: error.message }
+        }));
+
+        // Note: Avoid using window.location.href as it causes full page reload
+        // The App component should listen for 'auth:expired' event and handle navigation
+      }
     }
 
     // Log security-related errors

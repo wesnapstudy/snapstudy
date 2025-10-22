@@ -236,58 +236,160 @@ class DynamoDBService:
 
     # User operations
     async def create_user(self, user_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a new user."""
-        user_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc)
-        
-        item = {
-            'user_id': user_id,
-            'created_at': now.isoformat(),
-            'updated_at': now.isoformat(),
-            **user_data
-        }
-        
-        serialized_item = self._serialize_item(item)
-        self.users_table.put_item(Item=serialized_item)
-        return self._deserialize_item(serialized_item)
+        """Create a new user with proper data validation."""
+        try:
+            # Validate required fields
+            if not user_data.get('email'):
+                raise ValidationError("Email is required")
+            
+            if not user_data.get('password_hash'):
+                raise ValidationError("Password hash is required")
+            
+            # Check if user already exists
+            existing_user = await self.get_user_by_email(user_data['email'])
+            if existing_user:
+                from ..middleware.error_handler import ResourceConflictError
+                raise ResourceConflictError("User", "email", user_data['email'])
+            
+            # Generate user ID if not provided
+            user_id = user_data.get('user_id', str(uuid.uuid4()))
+            now = datetime.now(timezone.utc)
+            
+            # Set default values
+            item = {
+                'user_id': user_id,
+                'email': user_data['email'],
+                'password_hash': user_data['password_hash'],
+                'full_name': user_data.get('full_name'),
+                'age': user_data.get('age'),
+                'profession': user_data.get('profession'),
+                'education_level': user_data.get('education_level'),
+                'country': user_data.get('country'),
+                'onboarding_completed': user_data.get('onboarding_completed', False),
+                'preferences': user_data.get('preferences'),
+                'is_active': user_data.get('is_active', True),
+                'created_at': now.isoformat(),
+                'updated_at': now.isoformat()
+            }
+            
+            # Remove None values
+            item = {k: v for k, v in item.items() if v is not None}
+            
+            serialized_item = self._serialize_item(item)
+            self.users_table.put_item(Item=serialized_item)
+            
+            logger.info(f"User created successfully: {user_data['email']}")
+            return self._deserialize_item(serialized_item)
+            
+        except Exception as e:
+            logger.error(f"Error creating user: {str(e)}")
+            if isinstance(e, (ValidationError, ResourceConflictError)):
+                raise
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
     
     async def get_user_by_id(self, user_id: str) -> Optional[Dict[str, Any]]:
-        """Get user by ID."""
-        response = self.users_table.get_item(Key={'user_id': user_id})
-        return self._deserialize_item(response.get('Item')) if 'Item' in response else None
+        """Get user by ID with proper error handling."""
+        try:
+            if not user_id:
+                raise ValidationError("User ID is required")
+            
+            response = self.users_table.get_item(Key={'user_id': user_id})
+            
+            if 'Item' in response:
+                user = self._deserialize_item(response['Item'])
+                logger.debug(f"User retrieved by ID: {user_id}")
+                return user
+            
+            logger.debug(f"User not found by ID: {user_id}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting user by ID {user_id}: {str(e)}")
+            if isinstance(e, ValidationError):
+                raise
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
     
     async def get_user_by_email(self, email: str) -> Optional[Dict[str, Any]]:
-        """Get user by email using GSI."""
-        response = self.users_table.query(
-            IndexName='EmailIndex',
-            KeyConditionExpression=Key('email').eq(email)
-        )
-        items = response.get('Items', [])
-        return self._deserialize_item(items[0]) if items else None
+        """Get user by email using GSI with proper error handling."""
+        try:
+            if not email:
+                raise ValidationError("Email is required")
+            
+            # Use email-index GSI (assuming it exists)
+            response = self.users_table.query(
+                IndexName='email-index',
+                KeyConditionExpression=Key('email').eq(email)
+            )
+            
+            items = response.get('Items', [])
+            if items:
+                user = self._deserialize_item(items[0])
+                logger.debug(f"User retrieved by email: {email}")
+                return user
+            
+            logger.debug(f"User not found by email: {email}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting user by email {email}: {str(e)}")
+            if isinstance(e, ValidationError):
+                raise
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
     
     async def update_user(self, user_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-        """Update user data."""
-        updates['updated_at'] = datetime.now(timezone.utc).isoformat()
-        
-        update_expression = "SET "
-        expression_values = {}
-        
-        for key, value in updates.items():
-            update_expression += f"#{key} = :{key}, "
-            expression_values[f":{key}"] = self._serialize_item(value)
-        
-        update_expression = update_expression.rstrip(", ")
-        expression_names = {f"#{key}": key for key in updates.keys()}
-        
-        response = self.users_table.update_item(
-            Key={'user_id': user_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeNames=expression_names,
-            ExpressionAttributeValues=expression_values,
-            ReturnValues='ALL_NEW'
-        )
-        
-        return self._deserialize_item(response['Attributes'])
+        """Update user profile with proper validation."""
+        try:
+            if not user_id:
+                raise ValidationError("User ID is required")
+            
+            if not updates:
+                raise ValidationError("No updates provided")
+            
+            # Check if user exists
+            existing_user = await self.get_user_by_id(user_id)
+            if not existing_user:
+                raise ResourceNotFoundError("User", "user_id", user_id)
+            
+            # Add updated timestamp
+            updates['updated_at'] = datetime.now(timezone.utc).isoformat()
+            
+            # Build update expression
+            update_expression = "SET "
+            expression_values = {}
+            expression_names = {}
+            
+            for key, value in updates.items():
+                # Handle reserved keywords by using expression attribute names
+                attr_name = f"#{key}"
+                attr_value = f":{key}"
+                
+                update_expression += f"{attr_name} = {attr_value}, "
+                expression_values[attr_value] = self._serialize_item(value)
+                expression_names[attr_name] = key
+            
+            update_expression = update_expression.rstrip(", ")
+            
+            response = self.users_table.update_item(
+                Key={'user_id': user_id},
+                UpdateExpression=update_expression,
+                ExpressionAttributeNames=expression_names,
+                ExpressionAttributeValues=expression_values,
+                ReturnValues='ALL_NEW'
+            )
+            
+            updated_user = self._deserialize_item(response['Attributes'])
+            logger.info(f"User updated successfully: {user_id}")
+            return updated_user
+            
+        except Exception as e:
+            logger.error(f"Error updating user {user_id}: {str(e)}")
+            if isinstance(e, (ValidationError, ResourceNotFoundError)):
+                raise
+            aws_exception = handle_aws_error(e)
+            raise aws_exception
     
     # Lesson operations
     async def create_lesson(self, lesson_data: Dict[str, Any]) -> Dict[str, Any]:

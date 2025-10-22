@@ -1,40 +1,38 @@
 /**
- * Error Boundary component for handling React errors gracefully.
+ * Enhanced Error Boundary component for graceful error handling.
  * 
- * Provides fallback UI and error reporting for production-ready error handling.
+ * This component catches JavaScript errors anywhere in the component tree,
+ * logs those errors, and displays a fallback UI instead of crashing the app.
  */
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import './ErrorBoundary.css';
-import { analyticsService } from '../services/analyticsService';
+import { notificationManager } from '../utils/loadingStateManager';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
-  enableGracefulDegradation?: boolean;
-  criticalFeature?: boolean;
+  resetOnPropsChange?: boolean;
+  resetKeys?: Array<string | number>;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
-  userFeedback: string;
-  showFeedbackForm: boolean;
-  isReporting: boolean;
+  errorId: string | null;
 }
 
-class ErrorBoundary extends Component<Props, State> {
+export default class ErrorBoundary extends Component<Props, State> {
+  private resetTimeoutId: number | null = null;
+
   constructor(props: Props) {
     super(props);
     this.state = {
       hasError: false,
       error: null,
       errorInfo: null,
-      userFeedback: '',
-      showFeedbackForm: false,
-      isReporting: false
+      errorId: null
     };
   }
 
@@ -43,284 +41,425 @@ class ErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
-      errorInfo: null
+      errorId: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error details
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    // Log the error
+    this.logError(error, errorInfo);
     
+    // Update state with error info
     this.setState({
-      error,
       errorInfo
     });
 
-    // Call custom error handler if provided
+    // Call the onError callback if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
 
-    // Report error to monitoring service
-    this.reportError(error, errorInfo);
+    // Show error notification
+    this.showErrorNotification(error);
   }
 
-  private reportError = async (error: Error, errorInfo: ErrorInfo, userFeedback?: string) => {
+  componentDidUpdate(prevProps: Props) {
+    const { resetOnPropsChange, resetKeys } = this.props;
+    const { hasError } = this.state;
+
+    // Reset error state if resetKeys have changed
+    if (hasError && resetOnPropsChange && resetKeys) {
+      const prevResetKeys = prevProps.resetKeys || [];
+      const hasResetKeyChanged = resetKeys.some(
+        (key, index) => key !== prevResetKeys[index]
+      );
+
+      if (hasResetKeyChanged) {
+        this.resetErrorBoundary();
+      }
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.resetTimeoutId) {
+      clearTimeout(this.resetTimeoutId);
+    }
+  }
+
+  private logError(error: Error, errorInfo: ErrorInfo) {
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.group('🚨 Error Boundary Caught an Error');
+      console.error('Error:', error);
+      console.error('Error Info:', errorInfo);
+      console.error('Component Stack:', errorInfo.componentStack);
+      console.groupEnd();
+    }
+
+    // Log to external service in production
+    if (process.env.NODE_ENV === 'production') {
+      this.logToExternalService(error, errorInfo);
+    }
+  }
+
+  private logToExternalService(error: Error, errorInfo: ErrorInfo) {
+    // Example integration with error tracking service
     try {
-      const errorReport = {
+      const errorData = {
         message: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack,
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
         url: window.location.href,
-        userFeedback: userFeedback || '',
-        criticalFeature: this.props.criticalFeature || false,
-        gracefulDegradation: this.props.enableGracefulDegradation || false
+        userId: this.getCurrentUserId(),
+        errorId: this.state.errorId
       };
 
-      // Report to analytics service
-      await analyticsService.trackEngagementEvent('error_boundary_triggered', errorReport);
+      // Send to your error tracking service (e.g., Sentry, LogRocket, etc.)
+      // Example: Sentry.captureException(error, { extra: errorData });
       
-      console.error('Error Report:', errorReport);
-      
-      // Store error locally for debugging
-      const storedErrors = JSON.parse(localStorage.getItem('error_reports') || '[]');
-      storedErrors.push(errorReport);
-      
-      // Keep only last 10 errors
-      if (storedErrors.length > 10) {
-        storedErrors.splice(0, storedErrors.length - 10);
+      // For now, just log to console
+      console.error('Error logged to external service:', errorData);
+    } catch (loggingError) {
+      console.error('Failed to log error to external service:', loggingError);
+    }
+  }
+
+  private getCurrentUserId(): string | null {
+    // Try to get user ID from various sources
+    try {
+      // From localStorage
+      const authData = localStorage.getItem('auth');
+      if (authData) {
+        const parsed = JSON.parse(authData);
+        return parsed.user?.user_id || null;
       }
       
-      localStorage.setItem('error_reports', JSON.stringify(storedErrors));
+      // From sessionStorage
+      const sessionAuth = sessionStorage.getItem('auth');
+      if (sessionAuth) {
+        const parsed = JSON.parse(sessionAuth);
+        return parsed.user?.user_id || null;
+      }
       
-    } catch (reportingError) {
-      console.error('Failed to report error:', reportingError);
+      return null;
+    } catch {
+      return null;
     }
-  };
+  }
 
-  private handleRetry = () => {
+  private showErrorNotification(error: Error) {
+    const isNetworkError = error.message.includes('fetch') || 
+                          error.message.includes('network') ||
+                          !navigator.onLine;
+
+    if (isNetworkError) {
+      notificationManager.error(
+        'Connection Error',
+        'There was a problem connecting to our servers. Please check your internet connection and try again.',
+        true
+      );
+    } else {
+      notificationManager.error(
+        'Something went wrong',
+        'An unexpected error occurred. Our team has been notified and is working on a fix.',
+        true
+      );
+    }
+  }
+
+  private resetErrorBoundary = () => {
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
-      userFeedback: '',
-      showFeedbackForm: false,
-      isReporting: false
+      errorId: null
     });
+  };
+
+  private handleRetry = () => {
+    this.resetErrorBoundary();
   };
 
   private handleReload = () => {
     window.location.reload();
   };
 
-  private handleShowFeedback = () => {
-    this.setState({ showFeedbackForm: true });
-  };
+  private handleReportError = () => {
+    const { error, errorInfo, errorId } = this.state;
+    
+    if (error && errorId) {
+      // Create a detailed error report
+      const errorReport = {
+        errorId,
+        message: error.message,
+        stack: error.stack,
+        componentStack: errorInfo?.componentStack,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href
+      };
 
-  private handleFeedbackChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    this.setState({ userFeedback: event.target.value });
-  };
-
-  private handleSubmitFeedback = async () => {
-    if (this.state.error && this.state.errorInfo) {
-      this.setState({ isReporting: true });
-      await this.reportError(this.state.error, this.state.errorInfo, this.state.userFeedback);
-      this.setState({ 
-        isReporting: false, 
-        showFeedbackForm: false,
-        userFeedback: ''
-      });
-    }
-  };
-
-  private handleGracefulDegradation = () => {
-    // For non-critical features, try to continue with limited functionality
-    if (this.props.enableGracefulDegradation && !this.props.criticalFeature) {
-      this.setState({
-        hasError: false,
-        error: null,
-        errorInfo: null
-      });
+      // Copy to clipboard or open email client
+      const reportText = `Error Report (ID: ${errorId})\n\n${JSON.stringify(errorReport, null, 2)}`;
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(reportText).then(() => {
+          notificationManager.success(
+            'Error Report Copied',
+            'The error report has been copied to your clipboard. Please paste it in your support request.'
+          );
+        });
+      } else {
+        // Fallback: open email client
+        const subject = encodeURIComponent(`Error Report - ${errorId}`);
+        const body = encodeURIComponent(reportText);
+        window.open(`mailto:support@snapstudy.com?subject=${subject}&body=${body}`);
+      }
     }
   };
 
   render() {
-    if (this.state.hasError) {
+    const { hasError, error } = this.state;
+    const { children, fallback } = this.props;
+
+    if (hasError) {
       // Custom fallback UI
-      if (this.props.fallback) {
-        return this.props.fallback;
+      if (fallback) {
+        return fallback;
       }
 
       // Default error UI
       return (
         <div className="error-boundary">
           <div className="error-boundary-content">
-            <div className="error-icon">⚠️</div>
-            <h2>Something went wrong</h2>
-            <p>We're sorry, but something unexpected happened.</p>
+            <div className="error-icon">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+            </div>
             
+            <h2 className="error-title">Oops! Something went wrong</h2>
+            
+            <p className="error-message">
+              We're sorry, but something unexpected happened. Don't worry - your data is safe, 
+              and our team has been automatically notified about this issue.
+            </p>
+
+            {process.env.NODE_ENV === 'development' && error && (
+              <details className="error-details">
+                <summary>Error Details (Development Only)</summary>
+                <pre className="error-stack">
+                  {error.message}
+                  {error.stack && `\n\n${error.stack}`}
+                </pre>
+              </details>
+            )}
+
             <div className="error-actions">
               <button 
-                className="retry-button"
+                className="btn btn-primary"
                 onClick={this.handleRetry}
               >
                 Try Again
               </button>
+              
               <button 
-                className="reload-button"
+                className="btn btn-secondary"
                 onClick={this.handleReload}
               >
                 Reload Page
               </button>
-              {this.props.enableGracefulDegradation && !this.props.criticalFeature && (
-                <button 
-                  className="continue-button"
-                  onClick={this.handleGracefulDegradation}
-                >
-                  Continue Anyway
-                </button>
-              )}
+              
+              <button 
+                className="btn btn-outline"
+                onClick={this.handleReportError}
+              >
+                Report Error
+              </button>
             </div>
 
-            <div className="error-feedback">
-              {!this.state.showFeedbackForm ? (
-                <button 
-                  className="feedback-button"
-                  onClick={this.handleShowFeedback}
-                >
-                  Report Issue
-                </button>
-              ) : (
-                <div className="feedback-form">
-                  <h4>Help us improve</h4>
-                  <p>What were you trying to do when this error occurred?</p>
-                  <textarea
-                    className="feedback-textarea"
-                    value={this.state.userFeedback}
-                    onChange={this.handleFeedbackChange}
-                    placeholder="Describe what happened..."
-                    rows={3}
-                  />
-                  <div className="feedback-actions">
-                    <button 
-                      className="submit-feedback-button"
-                      onClick={this.handleSubmitFeedback}
-                      disabled={this.state.isReporting}
-                    >
-                      {this.state.isReporting ? 'Sending...' : 'Send Report'}
-                    </button>
-                    <button 
-                      className="cancel-feedback-button"
-                      onClick={() => this.setState({ showFeedbackForm: false, userFeedback: '' })}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
+            <div className="error-help">
+              <p>
+                If this problem persists, please{' '}
+                <a href="mailto:support@snapstudy.com">contact our support team</a>{' '}
+                with error ID: <code>{this.state.errorId}</code>
+              </p>
             </div>
-
-            {process.env.NODE_ENV === 'development' && this.state.error && (
-              <details className="error-details">
-                <summary>Error Details (Development Only)</summary>
-                <div className="error-stack">
-                  <h4>Error Message:</h4>
-                  <pre>{this.state.error.message}</pre>
-                  
-                  <h4>Stack Trace:</h4>
-                  <pre>{this.state.error.stack}</pre>
-                  
-                  {this.state.errorInfo && (
-                    <>
-                      <h4>Component Stack:</h4>
-                      <pre>{this.state.errorInfo.componentStack}</pre>
-                    </>
-                  )}
-                </div>
-              </details>
-            )}
           </div>
+
+          <style jsx>{`
+            .error-boundary {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              padding: 20px;
+              background-color: #f8f9fa;
+            }
+
+            .error-boundary-content {
+              max-width: 500px;
+              text-align: center;
+              background: white;
+              border-radius: 8px;
+              padding: 40px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .error-icon {
+              color: #dc3545;
+              margin-bottom: 20px;
+            }
+
+            .error-title {
+              color: #343a40;
+              margin-bottom: 16px;
+              font-size: 24px;
+              font-weight: 600;
+            }
+
+            .error-message {
+              color: #6c757d;
+              margin-bottom: 24px;
+              line-height: 1.5;
+            }
+
+            .error-details {
+              margin: 20px 0;
+              text-align: left;
+            }
+
+            .error-details summary {
+              cursor: pointer;
+              color: #6c757d;
+              margin-bottom: 10px;
+            }
+
+            .error-stack {
+              background: #f8f9fa;
+              border: 1px solid #dee2e6;
+              border-radius: 4px;
+              padding: 12px;
+              font-size: 12px;
+              overflow-x: auto;
+              white-space: pre-wrap;
+              color: #495057;
+            }
+
+            .error-actions {
+              display: flex;
+              gap: 12px;
+              justify-content: center;
+              margin-bottom: 24px;
+              flex-wrap: wrap;
+            }
+
+            .btn {
+              padding: 10px 20px;
+              border-radius: 4px;
+              border: none;
+              cursor: pointer;
+              font-weight: 500;
+              text-decoration: none;
+              display: inline-block;
+              transition: all 0.2s;
+            }
+
+            .btn-primary {
+              background-color: #007bff;
+              color: white;
+            }
+
+            .btn-primary:hover {
+              background-color: #0056b3;
+            }
+
+            .btn-secondary {
+              background-color: #6c757d;
+              color: white;
+            }
+
+            .btn-secondary:hover {
+              background-color: #545b62;
+            }
+
+            .btn-outline {
+              background-color: transparent;
+              color: #007bff;
+              border: 1px solid #007bff;
+            }
+
+            .btn-outline:hover {
+              background-color: #007bff;
+              color: white;
+            }
+
+            .error-help {
+              font-size: 14px;
+              color: #6c757d;
+            }
+
+            .error-help a {
+              color: #007bff;
+              text-decoration: none;
+            }
+
+            .error-help a:hover {
+              text-decoration: underline;
+            }
+
+            .error-help code {
+              background: #f8f9fa;
+              padding: 2px 4px;
+              border-radius: 3px;
+              font-family: monospace;
+              font-size: 12px;
+            }
+
+            @media (max-width: 480px) {
+              .error-boundary-content {
+                padding: 20px;
+              }
+
+              .error-actions {
+                flex-direction: column;
+              }
+
+              .btn {
+                width: 100%;
+              }
+            }
+          `}</style>
         </div>
       );
     }
 
-    return this.props.children;
+    return children;
   }
 }
 
-/**
- * Higher-order component for wrapping components with error boundary
- */
-export function withErrorBoundary<P extends object>(
-  WrappedComponent: React.ComponentType<P>,
-  fallback?: ReactNode,
-  onError?: (error: Error, errorInfo: ErrorInfo) => void
-) {
-  const WithErrorBoundaryComponent = (props: P) => (
-    <ErrorBoundary fallback={fallback} onError={onError}>
-      <WrappedComponent {...props} />
-    </ErrorBoundary>
-  );
-
-  WithErrorBoundaryComponent.displayName = `withErrorBoundary(${WrappedComponent.displayName || WrappedComponent.name})`;
-
-  return WithErrorBoundaryComponent;
+// Higher-order component for wrapping components with error boundary
+export function withErrorBoundary<T extends object>(
+  Component: React.ComponentType<T>,
+  errorBoundaryProps?: Omit<Props, 'children'>
+): React.ComponentType<T> {
+  return function ErrorBoundaryWrapper(props: T) {
+    return (
+      <ErrorBoundary {...errorBoundaryProps}>
+        <Component {...props} />
+      </ErrorBoundary>
+    );
+  };
 }
 
-/**
- * Specialized error boundaries for different parts of the app
- */
-export const MultimediaErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => (
-  <ErrorBoundary
-    fallback={
-      <div className="multimedia-error">
-        <h3>Multimedia Error</h3>
-        <p>There was an error loading the multimedia content. Please try refreshing the page.</p>
-      </div>
-    }
-    onError={(error, errorInfo) => {
-      console.error('Multimedia component error:', error);
-      // Track multimedia-specific errors
-    }}
-  >
-    {children}
-  </ErrorBoundary>
-);
-
-export const QuizErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => (
-  <ErrorBoundary
-    fallback={
-      <div className="quiz-error">
-        <h3>Quiz Error</h3>
-        <p>There was an error with the quiz. Your progress has been saved. Please try again.</p>
-      </div>
-    }
-    onError={(error, errorInfo) => {
-      console.error('Quiz component error:', error);
-      // Track quiz-specific errors
-    }}
-  >
-    {children}
-  </ErrorBoundary>
-);
-
-export const AnalyticsErrorBoundary: React.FC<{ children: ReactNode }> = ({ children }) => (
-  <ErrorBoundary
-    fallback={
-      <div className="analytics-error">
-        <h3>Analytics Error</h3>
-        <p>There was an error loading your analytics. The rest of the app is still working normally.</p>
-      </div>
-    }
-    onError={(error, errorInfo) => {
-      console.error('Analytics component error:', error);
-      // Track analytics-specific errors
-    }}
-  >
-    {children}
-  </ErrorBoundary>
-);
-
-export default ErrorBoundary;
+// Hook for programmatically triggering error boundary
+export function useErrorHandler() {
+  return (error: Error, errorInfo?: ErrorInfo) => {
+    // This will trigger the nearest error boundary
+    throw error;
+  };
+}

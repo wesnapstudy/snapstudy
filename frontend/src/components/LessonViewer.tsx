@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Lesson, MicroLesson, AdaptiveLearningState, User } from '../types';
 import { lessonService } from '../services/lessonService';
 import QuizInterface from './QuizInterface';
@@ -52,21 +52,25 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   
   const { setLoading, isLoading } = useLoadingState();
 
-  // Initialize adaptive learning state
-  useEffect(() => {
-    if (lesson && microLessons.length > 0) {
-      initializeAdaptiveLearning();
-    }
-  }, [lesson, microLessons]);
+  // Memoize stable values to prevent unnecessary re-renders
+  const lessonId = lesson?.lesson_id;
+  const microLessonCount = microLessons.length;
+  const userPreferencesJson = useMemo(
+    () => JSON.stringify(user.preferences),
+    [user.preferences]
+  );
 
   const initializeAdaptiveLearning = useCallback(async () => {
-    if (!lesson) return;
+    if (!lessonId || microLessonCount === 0) return;
 
     try {
       setLoading('initialization', true, { timeout: 10000 });
-      const state = await lessonService.initializeAdaptiveLearning(lesson.lesson_id, user.preferences);
+      const state = await lessonService.initializeAdaptiveLearning(
+        lessonId,
+        JSON.parse(userPreferencesJson)
+      );
       setAdaptiveState(state);
-      
+
       // Set the first micro lesson
       const firstMicroLesson = microLessons.find(ml => ml.micro_lesson_id === state.current_micro_lesson_id);
       if (firstMicroLesson) {
@@ -82,7 +86,14 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     } finally {
       setLoading('initialization', false);
     }
-  }, [lesson, microLessons, user.preferences]);
+  }, [lessonId, microLessonCount, userPreferencesJson, microLessons, setLoading]);
+
+  // Initialize adaptive learning state only when lesson changes
+  useEffect(() => {
+    if (lessonId && microLessonCount > 0) {
+      initializeAdaptiveLearning();
+    }
+  }, [lessonId, microLessonCount, initializeAdaptiveLearning]);
 
   const handleNextContent = useCallback(async () => {
     if (!lesson || !adaptiveState) return;

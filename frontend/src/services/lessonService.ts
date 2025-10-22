@@ -1,11 +1,18 @@
 import api from './api';
 import { Lesson, MicroLesson, AdaptiveLearningState, AdaptiveContentRequest, AdaptiveContentResponse, UserPreferences } from '../types';
+import { cachedApiCall } from '../utils/apiOptimization';
 
 class LessonService {
   async getUserLessons(): Promise<Lesson[]> {
     try {
-      const response = await api.get('/api/v1/lessons');
-      return response.data;
+      return await cachedApiCall<Lesson[]>(
+        'lessons:user',
+        async () => {
+          const response = await api.get('/api/v1/lessons');
+          return response.data;
+        },
+        { ttl: 3 * 60 * 1000 } // Cache for 3 minutes
+      );
     } catch (error) {
       console.error('Failed to get user lessons:', error);
       return [];
@@ -37,8 +44,14 @@ class LessonService {
 
   async getMicroLessons(lessonId: string): Promise<MicroLesson[]> {
     try {
-      const response = await api.get(`/api/v1/lessons/${lessonId}/micro-lessons`);
-      return response.data;
+      return await cachedApiCall<MicroLesson[]>(
+        `lessons:${lessonId}:micro-lessons`,
+        async () => {
+          const response = await api.get(`/api/v1/lessons/${lessonId}/micro-lessons`);
+          return response.data;
+        },
+        { ttl: 5 * 60 * 1000 } // Cache for 5 minutes
+      );
     } catch (error) {
       console.error('Failed to get micro lessons:', error);
       return [];

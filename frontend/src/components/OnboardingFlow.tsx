@@ -1,16 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OnboardingData } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import './OnboardingFlow.css';
 
 interface OnboardingFlowProps {
-  onComplete: (data: OnboardingData) => Promise<void>;
+  onComplete?: (data: OnboardingData) => Promise<void>;
   onSkip?: () => void;
 }
 
 const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onSkip }) => {
+  const { state, completeOnboarding, skipOnboarding, clearError } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  
+  // Use auth context state
+  const loading = state.isLoading;
+  const error = state.error;
   
   const [formData, setFormData] = useState<OnboardingData>({
     full_name: '',
@@ -63,16 +67,31 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onSkip }) =
     }
   };
 
+  // Clear error when component mounts or step changes
+  useEffect(() => {
+    clearError();
+  }, [currentStep, clearError]);
+
   const handleSubmit = async () => {
-    setLoading(true);
-    setError('');
-    
     try {
-      await onComplete(formData);
+      // Use auth context onboarding completion or fallback to prop
+      if (completeOnboarding) {
+        await completeOnboarding(formData);
+      } else if (onComplete) {
+        await onComplete(formData);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+      // Error is handled by auth context
+      console.error('Onboarding error:', err);
+    }
+  };
+
+  const handleSkip = () => {
+    // Use auth context skip or fallback to prop
+    if (skipOnboarding) {
+      skipOnboarding();
+    } else if (onSkip) {
+      onSkip();
     }
   };
 
@@ -258,9 +277,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onSkip }) =
           )}
         </div>
 
-        {onSkip && (
+        {(onSkip || skipOnboarding) && (
           <div className="skip-option">
-            <button type="button" onClick={onSkip} className="btn-link">
+            <button type="button" onClick={handleSkip} className="btn-link">
               Skip for now
             </button>
           </div>

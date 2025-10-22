@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Quiz, QuizQuestion, QuizResults as QuizResultsType, User } from '../types';
 import { quizService } from '../services/quizService';
 import { analyticsService } from '../services/analyticsService';
 import QuizResults from './QuizResults';
 import { SkeletonQuiz } from './SkeletonLoader';
 import { useLoadingState } from '../hooks/useLoadingState';
+import { debounce } from '../utils/apiOptimization';
 import './QuizInterface.css';
 
 interface QuizInterfaceProps {
@@ -80,26 +81,46 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
     }
   };
 
-  const handleAnswerChange = async (questionId: string, answer: string) => {
+  // Debounced feedback function to prevent excessive API calls
+  const debouncedFeedbackRef = useRef<ReturnType<typeof debounce> | null>(null);
+
+  useEffect(() => {
+    // Create debounced function that waits 500ms after user stops selecting answers
+    debouncedFeedbackRef.current = debounce(
+      async (quizId: string, questionId: string, answer: string) => {
+        try {
+          const feedback = await quizService.getImmediateFeedback(quizId, questionId, answer);
+          if (feedback && feedback.show_immediate_feedback) {
+            setAnswerFeedback(prev => ({
+              ...prev,
+              [questionId]: feedback
+            }));
+          }
+        } catch (error) {
+          console.error('Failed to get immediate feedback:', error);
+        }
+      },
+      500 // Wait 500ms after user stops selecting
+    );
+
+    return () => {
+      // Cleanup: cancel any pending debounced calls
+      if (debouncedFeedbackRef.current) {
+        debouncedFeedbackRef.current.cancel();
+      }
+    };
+  }, []);
+
+  const handleAnswerChange = (questionId: string, answer: string) => {
+    // Update answer immediately for UI responsiveness
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
     }));
 
-    // Provide immediate feedback for adaptive learning
-    if (quiz) {
-      try {
-        const feedback = await quizService.getImmediateFeedback(quiz.quiz_id, questionId, answer);
-        if (feedback && feedback.show_immediate_feedback) {
-          // Store feedback for display
-          setAnswerFeedback(prev => ({
-            ...prev,
-            [questionId]: feedback
-          }));
-        }
-      } catch (error) {
-        console.error('Failed to get immediate feedback:', error);
-      }
+    // Call debounced feedback function to reduce API calls
+    if (quiz && debouncedFeedbackRef.current) {
+      debouncedFeedbackRef.current(quiz.quiz_id, questionId, answer);
     }
   };
 

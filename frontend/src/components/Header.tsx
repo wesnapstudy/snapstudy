@@ -1,12 +1,13 @@
 import React from 'react';
 import { User, UserProfile } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
   user: User;
   userProfile: UserProfile | null;
   currentView: string;
   onViewChange: (view: 'lessons' | 'settings') => void;
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -16,6 +17,19 @@ const Header: React.FC<HeaderProps> = ({
   onViewChange, 
   onLogout 
 }) => {
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      if (onLogout) {
+        onLogout();
+      } else if (logout) {
+        await logout();
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
   return (
     <header className="snap-header">
       <div className="brand">

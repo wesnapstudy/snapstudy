@@ -12,7 +12,7 @@ import './MainApp.css';
 
 interface MainAppProps {
   user: User;
-  onLogout: () => void;
+  onLogout?: () => void;
 }
 
 type ViewType = 'lessons' | 'settings';

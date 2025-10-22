@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserProfile } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import ProfileSettings from './ProfileSettings';
+import './UserSettings.css';
 
 interface UserSettingsProps {
-  user: User;
-  userProfile: UserProfile | null;
-  onProfileUpdate: (profile: UserProfile) => void;
-  onLogout: () => void;
+  user?: User;
+  userProfile?: UserProfile | null;
+  onProfileUpdate?: (profile: UserProfile) => void;
+  onLogout?: () => void;
 }
 
 // SVG Icons matching lessons page style
@@ -41,55 +44,71 @@ const SaveIcon = () => (
 );
 
 const UserSettings: React.FC<UserSettingsProps> = ({
-  user,
+  user: propUser,
   userProfile,
   onProfileUpdate,
   onLogout
 }) => {
+  const { state, updateUser, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'profile' | 'analytics'>('profile');
-  const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: user.first_name || '',
-    last_name: user.last_name || '',
-    email: user.email || '',
-    age: user.age || '',
-    profession: user.profession || '',
-    education_level: user.education_level || '',
-    country: user.country || '',
-    learning_style: user.preferences?.learning_style || 'visual',
-    attention_span: user.preferences?.attention_span || 15,
-    difficulty_level: user.preferences?.difficulty_level || 'intermediate'
-  });
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
+  
+  // Use auth context user or fallback to prop
+  const user = propUser || state.user;
+  const [currentUser, setCurrentUser] = useState<User>(user!);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  // Update local state when user changes
+  useEffect(() => {
+    if (user) {
+      setCurrentUser(user);
+    }
+  }, [user]);
+
+  const handleProfileUpdate = async (updatedUser: User) => {
+    try {
+      // Use auth context update or fallback to prop
+      if (updateUser) {
+        await updateUser(updatedUser);
+      } else if (onProfileUpdate) {
+        const updatedProfile: UserProfile = {
+          user_id: updatedUser.id,
+          email: updatedUser.email,
+          username: updatedUser.username,
+          first_name: updatedUser.first_name,
+          last_name: updatedUser.last_name,
+          profile_picture: '',
+          created_at: userProfile?.created_at || new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_login: userProfile?.last_login || new Date().toISOString(),
+          preferences: updatedUser.preferences || {
+            learning_style: 'visual',
+            attention_span: 15,
+            difficulty_level: 'intermediate'
+          }
+        };
+        onProfileUpdate(updatedProfile);
+      }
+      
+      // Update local state for instant UI update
+      setCurrentUser(updatedUser);
+      setShowProfileEditor(false);
+    } catch (error) {
+      console.error('Profile update failed:', error);
+      // Error handling could be improved with toast notifications
+    }
   };
 
-  const handleSave = () => {
-    // TODO: Call API to save profile changes
-    console.log('Saving profile:', formData);
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    // Reset form to original values
-    setFormData({
-      first_name: user.first_name || '',
-      last_name: user.last_name || '',
-      email: user.email || '',
-      age: user.age || '',
-      profession: user.profession || '',
-      education_level: user.education_level || '',
-      country: user.country || '',
-      learning_style: user.preferences?.learning_style || 'visual',
-      attention_span: user.preferences?.attention_span || 15,
-      difficulty_level: user.preferences?.difficulty_level || 'intermediate'
-    });
-    setIsEditing(false);
+  const handleLogout = async () => {
+    try {
+      // Use auth context logout or fallback to prop
+      if (logout) {
+        await logout();
+      } else if (onLogout) {
+        onLogout();
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
   };
 
   return (
@@ -111,7 +130,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({
         </button>
         <button
           className="tab-button logout-tab"
-          onClick={onLogout}
+          onClick={handleLogout}
         >
           <span className="tab-icon"><LogoutIcon /></span>
           <span>Logout</span>
@@ -119,175 +138,124 @@ const UserSettings: React.FC<UserSettingsProps> = ({
       </div>
 
       {activeTab === 'profile' ? (
-        <div className="profile-content">
-          <div className="profile-header">
-            <div className="profile-avatar">
-              <div className="avatar-circle">
-                {(formData.first_name?.[0] || 'U').toUpperCase()}
-              </div>
-            </div>
-            <div className="profile-title">
-              <h2>{formData.first_name} {formData.last_name}</h2>
-              <p className="profile-email">{formData.email}</p>
-            </div>
-            <button
-              className="edit-profile-btn"
-              onClick={() => isEditing ? handleSave() : setIsEditing(true)}
-            >
-              <span className="btn-icon">
-                {isEditing ? <SaveIcon /> : <EditIcon />}
-              </span>
-              <span>{isEditing ? 'Save' : 'Edit'}</span>
-            </button>
-          </div>
+        <div className="settings-page">
+          <div className="settings-container">
+            <h1>Settings</h1>
 
-          <div className="profile-form">
-            <div className="form-section">
-              <h3>Personal Information</h3>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>First Name</label>
-                  <input
-                    type="text"
-                    name="first_name"
-                    value={formData.first_name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="First Name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Last Name</label>
-                  <input
-                    type="text"
-                    name="last_name"
-                    value={formData.last_name}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Last Name"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Email"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Age</label>
-                  <input
-                    type="number"
-                    name="age"
-                    value={formData.age}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Age"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Profession</label>
-                  <input
-                    type="text"
-                    name="profession"
-                    value={formData.profession}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Profession"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Education Level</label>
-                  <select
-                    name="education_level"
-                    value={formData.education_level}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  >
-                    <option value="">Select Education Level</option>
-                    <option value="High School">High School</option>
-                    <option value="Undergraduate">Undergraduate</option>
-                    <option value="Graduate">Graduate</option>
-                    <option value="Doctorate">Doctorate</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Country</label>
-                  <input
-                    type="text"
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Country"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-section">
-              <h3>Learning Preferences</h3>
-              <div className="form-grid">
-                <div className="form-group">
-                  <label>Learning Style</label>
-                  <select
-                    name="learning_style"
-                    value={formData.learning_style}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  >
-                    <option value="visual">Visual</option>
-                    <option value="auditory">Auditory</option>
-                    <option value="reading">Reading/Writing</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Attention Span (minutes)</label>
-                  <input
-                    type="number"
-                    name="attention_span"
-                    value={formData.attention_span}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    min="5"
-                    max="60"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Difficulty Level</label>
-                  <select
-                    name="difficulty_level"
-                    value={formData.difficulty_level}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                  >
-                    <option value="beginner">Beginner</option>
-                    <option value="intermediate">Intermediate</option>
-                    <option value="advanced">Advanced</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {isEditing && (
-              <div className="form-actions">
-                <button className="btn-cancel" onClick={handleCancel}>
-                  Cancel
-                </button>
-                <button className="btn-save" onClick={handleSave}>
-                  Save Changes
+            {/* Profile Section */}
+            <div className="settings-section">
+              <div className="section-title">
+                <h2>Profile</h2>
+                <button
+                  className="edit-button"
+                  onClick={() => setShowProfileEditor(true)}
+                >
+                  Edit
                 </button>
               </div>
-            )}
+
+              <div className="settings-list">
+                <div className="setting-item">
+                  <span className="setting-label">Email</span>
+                  <span className="setting-value">{currentUser.email}</span>
+                </div>
+                <div className="setting-item">
+                  <span className="setting-label">Name</span>
+                  <span className="setting-value">{currentUser.full_name || 'Not set'}</span>
+                </div>
+                <div className="setting-item">
+                  <span className="setting-label">Age</span>
+                  <span className="setting-value">{currentUser.age || 'Not set'}</span>
+                </div>
+                <div className="setting-item">
+                  <span className="setting-label">Profession</span>
+                  <span className="setting-value">{currentUser.profession || 'Not set'}</span>
+                </div>
+                <div className="setting-item">
+                  <span className="setting-label">Education</span>
+                  <span className="setting-value">{currentUser.education_level || 'Not set'}</span>
+                </div>
+                <div className="setting-item">
+                  <span className="setting-label">Country</span>
+                  <span className="setting-value">{currentUser.country || 'Not set'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Learning Preferences Section */}
+            <div className="settings-section">
+              <div className="section-title">
+                <h2>Learning Preferences</h2>
+              </div>
+
+              <div className="settings-list">
+                <div className="setting-item">
+                  <span className="setting-label">Learning Style</span>
+                  <span className="setting-value">
+                    {currentUser.preferences?.learning_style === 'visual' && 'Visual'}
+                    {currentUser.preferences?.learning_style === 'auditory' && 'Auditory'}
+                    {currentUser.preferences?.learning_style === 'reading' && 'Reading'}
+                    {!currentUser.preferences?.learning_style && 'Not set'}
+                  </span>
+                </div>
+                <div className="setting-item">
+                  <span className="setting-label">Lesson Length</span>
+                  <span className="setting-value">
+                    {currentUser.preferences?.attention_span
+                      ? `${currentUser.preferences.attention_span} minutes`
+                      : 'Not set'
+                    }
+                  </span>
+                </div>
+                <div className="setting-item">
+                  <span className="setting-label">Difficulty Level</span>
+                  <span className="setting-value">
+                    {currentUser.preferences?.difficulty_level === 'beginner' && 'Beginner'}
+                    {currentUser.preferences?.difficulty_level === 'intermediate' && 'Intermediate'}
+                    {currentUser.preferences?.difficulty_level === 'advanced' && 'Advanced'}
+                    {!currentUser.preferences?.difficulty_level && 'Not set'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Account Section */}
+            <div className="settings-section">
+              <div className="section-title">
+                <h2>Account</h2>
+              </div>
+
+              <div className="settings-list">
+                <div className="setting-item">
+                  <span className="setting-label">Onboarding Status</span>
+                  <span className={`setting-value ${currentUser.onboarding_completed ? 'status-complete' : 'status-incomplete'}`}>
+                    {currentUser.onboarding_completed ? 'Complete' : 'Incomplete'}
+                  </span>
+                </div>
+              </div>
+
+              {!currentUser.onboarding_completed && (
+                <button
+                  className="complete-onboarding-button"
+                  onClick={() => setShowProfileEditor(true)}
+                >
+                  Complete Onboarding
+                </button>
+              )}
+            </div>
           </div>
+
+          {showProfileEditor && (
+            <ProfileSettings
+              user={currentUser}
+              onUpdate={handleProfileUpdate}
+              onClose={() => setShowProfileEditor(false)}
+            />
+          )}
         </div>
       ) : (
         <div className="analytics-content">
-          <AnalyticsDashboard user={user} />
+          <AnalyticsDashboard user={currentUser} />
         </div>
       )}
     </div>

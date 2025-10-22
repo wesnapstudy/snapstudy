@@ -14,7 +14,8 @@ from aws_cdk import (
     aws_logs as logs,
     aws_wafv2 as wafv2,
     aws_cloudwatch as cloudwatch,
-
+    aws_bedrock as bedrock,
+    aws_opensearchserverless as opensearch,
     aws_s3_deployment as s3deploy,
 )
 from constructs import Construct
@@ -46,8 +47,8 @@ class SnapStudyStack(Stack):
         # Create AWS WAF
         self.create_waf()
 
-        # Create Bedrock Agents
-        # self.create_bedrock_agents()  # Commented out - not available in this CDK version
+        # Create Bedrock Agents - AUTONOMOUS AI CORE
+        self.create_bedrock_agents()
 
         # Create CloudWatch Dashboard and Alarms
         self.create_monitoring()
@@ -534,12 +535,12 @@ class SnapStudyStack(Stack):
 
     def create_api_gateway(self):
         """Create API Gateway."""
-        
+
         # REST API Gateway
         self.rest_api = apigateway.RestApi(
             self, "RestApi",
             rest_api_name="SnapStudy-RestApi",
-            description="REST API for SnapStudy platform",
+            description="REST API for SnapStudy platform - Integrated with container backend",
             endpoint_configuration=apigateway.EndpointConfiguration(
                 types=[apigateway.EndpointType.REGIONAL]
             ),
@@ -561,18 +562,10 @@ class SnapStudyStack(Stack):
                 metrics_enabled=True
             )
         )
-        
-        # Lambda integration
-        lambda_integration = apigateway.LambdaIntegration(
-            self.api_lambda,
-            proxy=True
-        )
-        
-        # Add proxy resource to handle all paths
-        self.rest_api.root.add_proxy(
-            default_integration=lambda_integration,
-            any_method=True
-        )
+
+        # Note: Using container deployment for backend
+        # API Gateway integration will be configured via VPC Link or HTTP integration
+        # This creates the API structure that will be connected to the containerized FastAPI backend
 
     def create_waf(self):
         """Create AWS WAF Web ACL for API protection."""
@@ -677,10 +670,7 @@ class SnapStudyStack(Stack):
 
     def create_bedrock_agents(self):
         """Create Amazon Bedrock Agents for autonomous AI capabilities."""
-        
-        # Import Bedrock constructs
-        from aws_cdk import aws_bedrock as bedrock
-        
+
         # Create IAM role for Bedrock Agent
         agent_role = iam.Role(
             self, "BedrockAgentRole",
@@ -901,8 +891,7 @@ Make all decisions autonomously based on data analysis. Always explain your reas
 
     def _create_opensearch_collection(self) -> str:
         """Create OpenSearch Serverless collection for vector storage."""
-        from aws_cdk import aws_opensearchserverless as opensearch
-        
+
         # Create security policy for the collection
         security_policy = opensearch.CfnSecurityPolicy(
             self, "KnowledgeBaseSecurityPolicy",
@@ -997,26 +986,8 @@ Make all decisions autonomously based on data analysis. Always explain your reas
             dashboard_name="SnapStudy-Metrics"
         )
 
-        # Lambda metrics
-        dashboard.add_widgets(
-            cloudwatch.GraphWidget(
-                title="Lambda Invocations",
-                left=[
-                    self.api_lambda.metric_invocations(statistic="Sum"),
-                    self.api_lambda.metric_errors(statistic="Sum"),
-                    self.api_lambda.metric_throttles(statistic="Sum")
-                ],
-                width=12
-            ),
-            cloudwatch.GraphWidget(
-                title="Lambda Duration",
-                left=[
-                    self.api_lambda.metric_duration(statistic="Average"),
-                    self.api_lambda.metric_duration(statistic="Maximum")
-                ],
-                width=12
-            )
-        )
+        # Note: Lambda metrics removed as using container deployment
+        # Agent metrics can be added once agents are deployed
 
         # API Gateway metrics
         dashboard.add_widgets(
@@ -1078,19 +1049,6 @@ Make all decisions autonomously based on data analysis. Always explain your reas
         )
 
         # Create alarms
-        # Lambda error alarm
-        lambda_error_alarm = cloudwatch.Alarm(
-            self, "LambdaErrorAlarm",
-            alarm_name="SnapStudy-Lambda-Errors",
-            alarm_description="Alert when Lambda function has errors",
-            metric=self.api_lambda.metric_errors(statistic="Sum"),
-            threshold=10,
-            evaluation_periods=1,
-            datapoints_to_alarm=1,
-            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING
-        )
-
         # API Gateway 5XX alarm
         api_5xx_alarm = cloudwatch.Alarm(
             self, "Api5XXAlarm",
@@ -1105,19 +1063,6 @@ Make all decisions autonomously based on data analysis. Always explain your reas
             threshold=5,
             evaluation_periods=1,
             datapoints_to_alarm=1,
-            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING
-        )
-
-        # Lambda duration alarm (detect slow responses)
-        lambda_duration_alarm = cloudwatch.Alarm(
-            self, "LambdaDurationAlarm",
-            alarm_name="SnapStudy-Lambda-Duration",
-            alarm_description="Alert when Lambda execution is slow",
-            metric=self.api_lambda.metric_duration(statistic="Average"),
-            threshold=25000,  # 25 seconds (near the 30s timeout)
-            evaluation_periods=2,
-            datapoints_to_alarm=2,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING
         )

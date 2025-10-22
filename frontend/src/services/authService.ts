@@ -3,6 +3,7 @@ import { User, OnboardingData } from '../types';
 import { config } from '../config';
 import { profileService } from './profileService';
 import { SecureStorage, SessionManager } from '../utils/secureStorage';
+import { cachedApiCall } from '../utils/apiOptimization';
 
 interface LoginCredentials {
   email: string;
@@ -113,15 +114,24 @@ class AuthService {
       }
     }
 
-    // Otherwise, get from API
+    // Otherwise, get from API with caching
     try {
-      const response = await api.get('/api/v1/users/me');
+      const user = await cachedApiCall<User>(
+        'user:current',
+        async () => {
+          const response = await api.get('/api/v1/users/me');
+          return response.data;
+        },
+        { ttl: 5 * 60 * 1000 } // Cache for 5 minutes
+      );
+
       // Cache user data securely
-      await SecureStorage.setItem(this.userDataKey, response.data, { 
-        encrypt: true, 
-        expirationMinutes: 480 
+      await SecureStorage.setItem(this.userDataKey, user, {
+        encrypt: true,
+        expirationMinutes: 480
       });
-      return response.data;
+
+      return user;
     } catch (error) {
       throw new Error('Failed to get current user');
     }
@@ -202,13 +212,16 @@ class AuthService {
   private async handleSessionTimeout(): Promise<void> {
     console.warn('Session timeout - logging out user');
     await this.logout();
-    
-    // Show user-friendly notification
-    if (window.confirm('Your session has expired for security reasons. Would you like to log in again?')) {
-      window.location.href = '/login';
-    } else {
-      window.location.href = '/';
-    }
+
+    // Dispatch event instead of using window.location to avoid page reload
+    window.dispatchEvent(new CustomEvent('auth:expired', {
+      detail: { reason: 'session_timeout' }
+    }));
+
+    // Show user-friendly notification without blocking
+    setTimeout(() => {
+      alert('Your session has expired for security reasons. Please log in again.');
+    }, 100);
   }
 }
 

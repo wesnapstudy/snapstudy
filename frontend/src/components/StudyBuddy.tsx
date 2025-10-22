@@ -24,20 +24,31 @@ const StudyBuddy: React.FC<StudyBuddyProps> = ({ lesson, user }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize chat session and load history
+  // Only re-initialize when lesson ID actually changes
+  const lessonId = lesson?.lesson_id;
+  const lessonIdRef = useRef<string | undefined>(undefined);
+
   useEffect(() => {
+    // Skip if lesson ID hasn't changed
+    if (lessonId === lessonIdRef.current) {
+      return;
+    }
+
+    lessonIdRef.current = lessonId;
+
     const initializeChat = async () => {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // Start new session
-        const newSessionId = await chatService.startNewSession(lesson?.lesson_id);
+        const newSessionId = await chatService.startNewSession(lessonId);
         setSessionId(newSessionId);
-        
+
         // Load chat history
         const history = await chatService.getChatHistory(newSessionId);
         setMessages(history);
-        
+
         // Add welcome message if no history
         if (history.length === 0) {
           const welcomeMessage: ChatMessage = {
@@ -51,7 +62,7 @@ const StudyBuddy: React.FC<StudyBuddyProps> = ({ lesson, user }) => {
       } catch (err) {
         console.error('Failed to initialize chat:', err);
         setError('Failed to connect to chat service. Please try again.');
-        
+
         // Fallback to welcome message
         const welcomeMessage: ChatMessage = {
           id: 'welcome',
@@ -66,7 +77,7 @@ const StudyBuddy: React.FC<StudyBuddyProps> = ({ lesson, user }) => {
     };
 
     initializeChat();
-  }, [lesson?.lesson_id]);
+  }, [lessonId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
