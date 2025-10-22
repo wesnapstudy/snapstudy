@@ -40,9 +40,22 @@ class Settings:
     cors_origins: List[str] = os.getenv("CORS_ORIGINS", "*").split(",")
     
     # Bedrock Configuration
-    bedrock_model_id: str = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
+    bedrock_model_id: str = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-5-sonnet-20240620-v1:0")
     bedrock_region: str = os.getenv("BEDROCK_REGION", "us-east-1")
-    
+
+    # Bedrock Agents Configuration (AgentCore)
+    learning_agent_id: str = os.getenv("LEARNING_AGENT_ID", "")
+    adaptive_agent_id: str = os.getenv("ADAPTIVE_AGENT_ID", "")
+    bedrock_agent_alias_id: str = os.getenv("BEDROCK_AGENT_ALIAS_ID", "TSTALIASID")
+
+    # Knowledge Base Configuration
+    knowledge_base_id: str = os.getenv("KNOWLEDGE_BASE_ID", "")
+    opensearch_endpoint: str = os.getenv("OPENSEARCH_ENDPOINT", "")
+
+    # Bedrock Guardrails Configuration
+    bedrock_guardrail_id: str = os.getenv("BEDROCK_GUARDRAIL_ID", "")
+    bedrock_guardrail_version: str = os.getenv("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
+
     # Environment
     environment: str = os.getenv("ENVIRONMENT", "development")
 

@@ -51,12 +51,15 @@ class ContentGuardrailsService:
     """
     
     def __init__(self):
-        self.bedrock_client = boto3.client('bedrock-runtime', region_name=settings.aws_region)
-        
+        self.bedrock_runtime = boto3.client('bedrock-runtime', region_name=settings.aws_region)
+        self.bedrock_client = boto3.client('bedrock', region_name=settings.aws_region)
+
         # Guardrails configuration
-        self.guardrail_id = getattr(settings, 'bedrock_guardrail_id', None)
-        self.guardrail_version = getattr(settings, 'bedrock_guardrail_version', 'DRAFT')
+        self.guardrail_id = settings.bedrock_guardrail_id
+        self.guardrail_version = settings.bedrock_guardrail_version
         self.safety_level = getattr(settings, 'content_safety_level', 'strict')
+
+        logger.info(f"ContentGuardrailsService initialized with Guardrail ID: {self.guardrail_id}")
         
         # Educational content validation rules
         self.educational_keywords = {
