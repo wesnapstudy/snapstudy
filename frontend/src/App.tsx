@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { performanceMonitor, usePerformanceMonitor } from './utils/performance';
 import { RoutePreloader } from './utils/lazyLoading';
 import { config } from './config';
+import { DataSyncProvider } from './contexts/DataSyncContext';
 import './App.css';
 
 // Lazy load main components
@@ -156,39 +157,41 @@ const App: React.FC = () => {
   }
 
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        // Track application errors
-        performanceMonitor.recordMetric('ApplicationError', 1, {
-          error: error.message,
-          componentStack: errorInfo.componentStack
-        });
-      }}
-    >
-      <Suspense fallback={
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Loading application...</p>
-        </div>
-      }>
-        {!isAuthenticated || !user ? (
-          <LoginForm 
-            onLogin={handleLogin}
-            onRegister={handleRegister}
-          />
-        ) : needsOnboarding ? (
-          <OnboardingFlow 
-            onComplete={handleOnboardingComplete}
-            onSkip={handleOnboardingSkip}
-          />
-        ) : (
-          <MainApp 
-            user={user}
-            onLogout={handleLogout}
-          />
-        )}
-      </Suspense>
-    </ErrorBoundary>
+    <DataSyncProvider>
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          // Track application errors
+          performanceMonitor.recordMetric('ApplicationError', 1, {
+            error: error.message,
+            componentStack: errorInfo.componentStack
+          });
+        }}
+      >
+        <Suspense fallback={
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>Loading application...</p>
+          </div>
+        }>
+          {!isAuthenticated || !user ? (
+            <LoginForm 
+              onLogin={handleLogin}
+              onRegister={handleRegister}
+            />
+          ) : needsOnboarding ? (
+            <OnboardingFlow 
+              onComplete={handleOnboardingComplete}
+              onSkip={handleOnboardingSkip}
+            />
+          ) : (
+            <MainApp 
+              user={user}
+              onLogout={handleLogout}
+            />
+          )}
+        </Suspense>
+      </ErrorBoundary>
+    </DataSyncProvider>
   );
 };
 

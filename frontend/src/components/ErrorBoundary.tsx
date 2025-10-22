@@ -6,17 +6,23 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import './ErrorBoundary.css';
+import { analyticsService } from '../services/analyticsService';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  enableGracefulDegradation?: boolean;
+  criticalFeature?: boolean;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  userFeedback: string;
+  showFeedbackForm: boolean;
+  isReporting: boolean;
 }
 
 class ErrorBoundary extends Component<Props, State> {
@@ -25,11 +31,14 @@ class ErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
+      userFeedback: '',
+      showFeedbackForm: false,
+      isReporting: false
     };
   }
 
-  static getDerivedStateFromError(error: Error): State {
+  static getDerivedStateFromError(error: Error): Partial<State> {
     // Update state so the next render will show the fallback UI
     return {
       hasError: true,
@@ -56,22 +65,36 @@ class ErrorBoundary extends Component<Props, State> {
     this.reportError(error, errorInfo);
   }
 
-  private reportError = (error: Error, errorInfo: ErrorInfo) => {
+  private reportError = async (error: Error, errorInfo: ErrorInfo, userFeedback?: string) => {
     try {
-      // In a real application, you would send this to your error reporting service
       const errorReport = {
         message: error.message,
         stack: error.stack,
         componentStack: errorInfo.componentStack,
         timestamp: new Date().toISOString(),
         userAgent: navigator.userAgent,
-        url: window.location.href
+        url: window.location.href,
+        userFeedback: userFeedback || '',
+        criticalFeature: this.props.criticalFeature || false,
+        gracefulDegradation: this.props.enableGracefulDegradation || false
       };
 
-      // Example: Send to analytics service
-      // analyticsService.trackError(errorReport);
+      // Report to analytics service
+      await analyticsService.trackEngagementEvent('error_boundary_triggered', errorReport);
       
       console.error('Error Report:', errorReport);
+      
+      // Store error locally for debugging
+      const storedErrors = JSON.parse(localStorage.getItem('error_reports') || '[]');
+      storedErrors.push(errorReport);
+      
+      // Keep only last 10 errors
+      if (storedErrors.length > 10) {
+        storedErrors.splice(0, storedErrors.length - 10);
+      }
+      
+      localStorage.setItem('error_reports', JSON.stringify(storedErrors));
+      
     } catch (reportingError) {
       console.error('Failed to report error:', reportingError);
     }
@@ -81,12 +104,46 @@ class ErrorBoundary extends Component<Props, State> {
     this.setState({
       hasError: false,
       error: null,
-      errorInfo: null
+      errorInfo: null,
+      userFeedback: '',
+      showFeedbackForm: false,
+      isReporting: false
     });
   };
 
   private handleReload = () => {
     window.location.reload();
+  };
+
+  private handleShowFeedback = () => {
+    this.setState({ showFeedbackForm: true });
+  };
+
+  private handleFeedbackChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    this.setState({ userFeedback: event.target.value });
+  };
+
+  private handleSubmitFeedback = async () => {
+    if (this.state.error && this.state.errorInfo) {
+      this.setState({ isReporting: true });
+      await this.reportError(this.state.error, this.state.errorInfo, this.state.userFeedback);
+      this.setState({ 
+        isReporting: false, 
+        showFeedbackForm: false,
+        userFeedback: ''
+      });
+    }
+  };
+
+  private handleGracefulDegradation = () => {
+    // For non-critical features, try to continue with limited functionality
+    if (this.props.enableGracefulDegradation && !this.props.criticalFeature) {
+      this.setState({
+        hasError: false,
+        error: null,
+        errorInfo: null
+      });
+    }
   };
 
   render() {
@@ -117,6 +174,52 @@ class ErrorBoundary extends Component<Props, State> {
               >
                 Reload Page
               </button>
+              {this.props.enableGracefulDegradation && !this.props.criticalFeature && (
+                <button 
+                  className="continue-button"
+                  onClick={this.handleGracefulDegradation}
+                >
+                  Continue Anyway
+                </button>
+              )}
+            </div>
+
+            <div className="error-feedback">
+              {!this.state.showFeedbackForm ? (
+                <button 
+                  className="feedback-button"
+                  onClick={this.handleShowFeedback}
+                >
+                  Report Issue
+                </button>
+              ) : (
+                <div className="feedback-form">
+                  <h4>Help us improve</h4>
+                  <p>What were you trying to do when this error occurred?</p>
+                  <textarea
+                    className="feedback-textarea"
+                    value={this.state.userFeedback}
+                    onChange={this.handleFeedbackChange}
+                    placeholder="Describe what happened..."
+                    rows={3}
+                  />
+                  <div className="feedback-actions">
+                    <button 
+                      className="submit-feedback-button"
+                      onClick={this.handleSubmitFeedback}
+                      disabled={this.state.isReporting}
+                    >
+                      {this.state.isReporting ? 'Sending...' : 'Send Report'}
+                    </button>
+                    <button 
+                      className="cancel-feedback-button"
+                      onClick={() => this.setState({ showFeedbackForm: false, userFeedback: '' })}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {process.env.NODE_ENV === 'development' && this.state.error && (

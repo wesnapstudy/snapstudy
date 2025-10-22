@@ -69,43 +69,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Enhanced security with JWT validation
-security = enhanced_bearer
-
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Enhanced dependency to get current authenticated user with proper error handling."""
-    from ..middleware.error_handler import AuthenticationError, ResourceNotFoundError
-    
-    if not credentials:
-        raise AuthenticationError("Authentication required")
-    
-    try:
-        # Get user ID from request state (set by enhanced_bearer)
-        user_id = getattr(credentials, 'user_id', None)
-        if hasattr(credentials, 'request') and hasattr(credentials.request.state, 'user_id'):
-            user_id = credentials.request.state.user_id
-        
-        if not user_id:
-            # Fallback to token parsing
-            from ..middleware.security import jwt_validator
-            payload = jwt_validator.verify_token(credentials.credentials)
-            user_id = payload.get('user_id')
-        
-        if not user_id:
-            raise AuthenticationError("Invalid token: user ID not found")
-        
-        # Get user from database
-        user = await db_service.get_user_by_id(user_id)
-        if not user:
-            raise ResourceNotFoundError("User", user_id)
-        
-        return user
-        
-    except (AuthenticationError, ResourceNotFoundError):
-        raise
-    except Exception as e:
-        logger.error(f"Error in get_current_user: {str(e)}")
-        raise AuthenticationError(f"Authentication failed: {str(e)}")
+# Import get_current_user from dependencies to avoid circular imports
+from .dependencies import get_current_user
 
 # Include routers
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
@@ -134,7 +99,7 @@ async def health_check():
     from datetime import datetime
     import sys
     import os
-    
+
     try:
         # Check database connectivity
         db_status = "healthy"
@@ -142,7 +107,7 @@ async def health_check():
             db_service.health_check()
         except Exception as e:
             db_status = f"unhealthy: {str(e)}"
-        
+
         # Check AWS services
         aws_status = "healthy"
         try:
@@ -152,7 +117,7 @@ async def health_check():
             sts.get_caller_identity()
         except Exception as e:
             aws_status = f"unhealthy: {str(e)}"
-        
+
         health_data = {
             "status": "healthy" if db_status == "healthy" and aws_status == "healthy" else "degraded",
             "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -165,9 +130,9 @@ async def health_check():
             },
             "uptime_seconds": time.time() - app.state.start_time if hasattr(app.state, 'start_time') else 0
         }
-        
+
         return health_data
-        
+
     except Exception as e:
         logger.error(f"Health check failed: {str(e)}")
         return {
@@ -175,6 +140,227 @@ async def health_check():
             "timestamp": datetime.utcnow().isoformat() + "Z",
             "error": str(e)
         }
+
+
+@app.get("/api-docs")
+async def api_documentation():
+    """
+    Comprehensive API documentation endpoint.
+
+    Returns detailed information about all available API endpoints,
+    request/response models, and usage examples.
+    """
+    return {
+        "api_name": "SnapStudy API",
+        "version": settings.api_version,
+        "description": "Backend API for SnapStudy adaptive learning platform",
+        "base_url": "/api/v1",
+        "authentication": {
+            "type": "Bearer Token",
+            "description": "Include the access token in the Authorization header",
+            "example": "Authorization: Bearer <your-access-token>"
+        },
+        "endpoints": {
+            "authentication": {
+                "base_path": "/api/v1/auth",
+                "endpoints": [
+                    {
+                        "method": "POST",
+                        "path": "/login",
+                        "description": "Authenticate user with email and password",
+                        "requires_auth": False,
+                        "request_body": {
+                            "email": "string (email)",
+                            "password": "string"
+                        },
+                        "response": {
+                            "access_token": "string",
+                            "token_type": "bearer",
+                            "user": "object"
+                        }
+                    },
+                    {
+                        "method": "POST",
+                        "path": "/register",
+                        "description": "Register a new user account",
+                        "requires_auth": False,
+                        "request_body": {
+                            "email": "string (email)",
+                            "password": "string",
+                            "first_name": "string",
+                            "last_name": "string"
+                        }
+                    },
+                    {
+                        "method": "POST",
+                        "path": "/logout",
+                        "description": "Logout and invalidate session",
+                        "requires_auth": True
+                    }
+                ]
+            },
+            "lessons": {
+                "base_path": "/api/v1/lessons",
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "path": "/",
+                        "description": "Get all lessons for the authenticated user",
+                        "requires_auth": True,
+                        "response": "array of lesson objects"
+                    },
+                    {
+                        "method": "POST",
+                        "path": "/upload",
+                        "description": "Upload a new lesson file (PDF, DOCX, TXT)",
+                        "requires_auth": True,
+                        "content_type": "multipart/form-data",
+                        "request_body": {
+                            "file": "file upload"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/{lesson_id}",
+                        "description": "Get a specific lesson by ID",
+                        "requires_auth": True,
+                        "path_params": {
+                            "lesson_id": "string"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/{lesson_id}/micro-lessons",
+                        "description": "Get all micro-lessons for a specific lesson",
+                        "requires_auth": True,
+                        "path_params": {
+                            "lesson_id": "string"
+                        }
+                    },
+                    {
+                        "method": "DELETE",
+                        "path": "/{lesson_id}",
+                        "description": "Delete a lesson and all associated micro-lessons",
+                        "requires_auth": True,
+                        "path_params": {
+                            "lesson_id": "string"
+                        }
+                    }
+                ]
+            },
+            "analytics": {
+                "base_path": "/api/v1/analytics",
+                "endpoints": [
+                    {
+                        "method": "GET",
+                        "path": "/dashboard",
+                        "description": "Get comprehensive analytics dashboard data",
+                        "requires_auth": True,
+                        "response": {
+                            "metrics": "object (lessons_completed, quizzes_taken, average_score, total_time_spent_minutes)",
+                            "retention": "object (current_streak, longest_streak, retention_rate, consistency_score)",
+                            "learning_patterns": "array of strings",
+                            "generated_at": "ISO 8601 timestamp"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/velocity",
+                        "description": "Get learning velocity metrics",
+                        "requires_auth": True,
+                        "query_params": {
+                            "period": "integer (days, default: 7)"
+                        },
+                        "response": {
+                            "learning_pace": "string (fast, moderate, slow)",
+                            "daily_averages": "object",
+                            "activity_score": "float"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/struggling-concepts",
+                        "description": "Get concepts the user is struggling with",
+                        "requires_auth": True,
+                        "response": {
+                            "struggling_concepts": "array of concept objects"
+                        }
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/recommendations",
+                        "description": "Get personalized learning recommendations",
+                        "requires_auth": True,
+                        "response": {
+                            "recommendations": "array of recommendation objects"
+                        }
+                    },
+                    {
+                        "method": "POST",
+                        "path": "/track-event",
+                        "description": "Track a learning event for analytics",
+                        "requires_auth": True,
+                        "request_body": {
+                            "event_name": "string",
+                            "event_data": "object"
+                        }
+                    }
+                ]
+            },
+            "users": {
+                "base_path": "/api/v1/users",
+                "description": "User profile and settings management"
+            },
+            "content": {
+                "base_path": "/api/v1/content",
+                "description": "Content generation and management"
+            },
+            "ai_services": {
+                "base_path": "/api/v1/ai",
+                "description": "AI-powered learning features"
+            },
+            "adaptive": {
+                "base_path": "/api/v1/adaptive",
+                "description": "Adaptive learning algorithms"
+            },
+            "quiz": {
+                "base_path": "/api/v1/quiz",
+                "description": "Quiz generation and management"
+            },
+            "chat": {
+                "base_path": "/api/v1/chat",
+                "description": "Agentic chat and study buddy"
+            },
+            "multimedia": {
+                "base_path": "/api/v1/multimedia",
+                "description": "Multimedia content generation"
+            }
+        },
+        "error_handling": {
+            "description": "All errors follow a standard format",
+            "format": {
+                "detail": "string (error message)",
+                "status_code": "integer (HTTP status code)"
+            },
+            "common_status_codes": {
+                "200": "Success",
+                "201": "Created",
+                "204": "No Content",
+                "400": "Bad Request",
+                "401": "Unauthorized",
+                "403": "Forbidden",
+                "404": "Not Found",
+                "500": "Internal Server Error"
+            }
+        },
+        "rate_limits": {
+            "requests_per_minute": 100,
+            "requests_per_hour": 2000,
+            "burst_limit": 20
+        },
+        "swagger_ui": "/docs" if settings.api_version != "production" else "Disabled in production",
+        "redoc": "/redoc" if settings.api_version != "production" else "Disabled in production"
+    }
 
 @app.on_event("startup")
 async def startup_event():

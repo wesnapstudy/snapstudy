@@ -3,6 +3,8 @@ import { Quiz, QuizQuestion, QuizResults as QuizResultsType, User } from '../typ
 import { quizService } from '../services/quizService';
 import { analyticsService } from '../services/analyticsService';
 import QuizResults from './QuizResults';
+import { SkeletonQuiz } from './SkeletonLoader';
+import { useLoadingState } from '../hooks/useLoadingState';
 import './QuizInterface.css';
 
 interface QuizInterfaceProps {
@@ -21,13 +23,17 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
   const [quiz, setQuiz] = useState<Quiz | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answerFeedback, setAnswerFeedback] = useState<Record<string, any>>({});
   const [results, setResults] = useState<QuizResultsType | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showHint, setShowHint] = useState(false);
   const [hint, setHint] = useState<string | null>(null);
   const [timeSpent, setTimeSpent] = useState(0);
   const [startTime] = useState(Date.now());
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [questionTimes, setQuestionTimes] = useState<Record<string, number>>({});
+  
+  const { setLoading, isLoading } = useLoadingState();
 
   useEffect(() => {
     generateQuiz();
@@ -43,11 +49,18 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
 
   const generateQuiz = async () => {
     try {
-      setLoading(true);
+      setLoading('quiz', true, { timeout: 10000 });
       setError(null);
       
-      const quizData = await quizService.generateQuiz(lessonId);
+      // Generate adaptive quiz based on user preferences and performance
+      const quizData = await quizService.generateQuiz(
+        lessonId, 
+        user.preferences?.difficulty_level || 'adaptive',
+        5 // Default number of questions
+      );
+      
       setQuiz(quizData);
+      setQuestionStartTime(Date.now());
       quizService.startQuizTimer();
       
       // Track quiz generation
@@ -55,27 +68,66 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
         quiz_id: quizData.quiz_id,
         lesson_id: lessonId,
         difficulty: quizData.difficulty_level,
-        num_questions: quizData.total_questions
+        num_questions: quizData.total_questions,
+        adaptive_features: quizData.quiz_metadata.adaptive_features || []
       });
       
     } catch (error) {
       console.error('Failed to generate quiz:', error);
       setError('Failed to generate quiz. Please try again.');
     } finally {
-      setLoading(false);
+      setLoading('quiz', false);
     }
   };
 
-  const handleAnswerChange = (questionId: string, answer: string) => {
+  const handleAnswerChange = async (questionId: string, answer: string) => {
     setAnswers(prev => ({
       ...prev,
       [questionId]: answer
     }));
+
+    // Provide immediate feedback for adaptive learning
+    if (quiz) {
+      try {
+        const feedback = await quizService.getImmediateFeedback(quiz.quiz_id, questionId, answer);
+        if (feedback && feedback.show_immediate_feedback) {
+          // Store feedback for display
+          setAnswerFeedback(prev => ({
+            ...prev,
+            [questionId]: feedback
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to get immediate feedback:', error);
+      }
+    }
   };
 
-  const handleNextQuestion = () => {
-    if (currentQuestionIndex < (quiz?.questions.length || 0) - 1) {
+  const handleNextQuestion = async () => {
+    if (!quiz) return;
+    
+    const currentQuestion = quiz.questions[currentQuestionIndex];
+    const timeOnQuestion = (Date.now() - questionStartTime) / 1000;
+    
+    // Track time spent on current question
+    setQuestionTimes(prev => ({
+      ...prev,
+      [currentQuestion.id]: timeOnQuestion
+    }));
+
+    // Submit question progress to backend
+    if (answers[currentQuestion.id]) {
+      await quizService.submitQuestionProgress(
+        quiz.quiz_id,
+        currentQuestion.id,
+        timeOnQuestion,
+        1 // For now, assume 1 attempt per question
+      );
+    }
+
+    if (currentQuestionIndex < quiz.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
+      setQuestionStartTime(Date.now());
       setShowHint(false);
       setHint(null);
     }
@@ -84,6 +136,7 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
   const handlePreviousQuestion = () => {
     if (currentQuestionIndex > 0) {
       setCurrentQuestionIndex(prev => prev - 1);
+      setQuestionStartTime(Date.now());
       setShowHint(false);
       setHint(null);
     }
@@ -123,27 +176,52 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
     if (!quiz) return;
     
     try {
-      setLoading(true);
+      setLoading('submit', true, { timeout: 10000 });
       
+      // Calculate detailed engagement metrics
+      const totalHintsUsed = Object.keys(answerFeedback).length + (showHint ? 1 : 0);
+      const averageTimePerQuestion = Object.values(questionTimes).length > 0 
+        ? Object.values(questionTimes).reduce((a, b) => a + b, 0) / Object.values(questionTimes).length
+        : timeSpent / quiz.questions.length;
+      
+      const engagementMetrics = {
+        questions_attempted: Object.keys(answers).length,
+        hints_used: totalHintsUsed,
+        time_per_question: averageTimePerQuestion,
+        question_times: questionTimes,
+        immediate_feedback_used: Object.keys(answerFeedback).length,
+        completion_rate: (Object.keys(answers).length / quiz.questions.length) * 100,
+        user_preferences: {
+          difficulty_level: user.preferences?.difficulty_level,
+          learning_style: user.preferences?.learning_style,
+          attention_span: user.preferences?.attention_span
+        }
+      };
+
       const quizResults = await quizService.submitQuiz(
         quiz.quiz_id,
         answers,
         timeSpent,
-        {
-          questions_attempted: Object.keys(answers).length,
-          hints_used: showHint ? 1 : 0,
-          time_per_question: timeSpent / quiz.questions.length
-        }
+        engagementMetrics
       );
       
       setResults(quizResults);
       
-      // Track quiz completion
+      // Track quiz completion with enhanced analytics
       await analyticsService.trackQuizCompleted(
         quiz.quiz_id,
         quizResults.overall_score,
         timeSpent
       );
+
+      // Track detailed engagement metrics
+      await analyticsService.trackEngagementEvent('quiz_completed_detailed', {
+        quiz_id: quiz.quiz_id,
+        lesson_id: lessonId,
+        score: quizResults.overall_score,
+        time_spent: timeSpent,
+        engagement_metrics: engagementMetrics
+      });
       
       if (onQuizComplete) {
         onQuizComplete(quizResults);
@@ -153,7 +231,7 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
       console.error('Failed to submit quiz:', error);
       setError('Failed to submit quiz. Please try again.');
     } finally {
-      setLoading(false);
+      setLoading('submit', false);
     }
   };
 
@@ -165,13 +243,8 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
 
   const isQuizComplete = quiz && Object.keys(answers).length === quiz.questions.length;
 
-  if (loading && !quiz) {
-    return (
-      <div className="quiz-interface loading">
-        <div className="loading-spinner"></div>
-        <p>Generating your personalized quiz...</p>
-      </div>
-    );
+  if (isLoading('quiz') && !quiz) {
+    return <SkeletonQuiz className="quiz-interface-skeleton" />;
   }
 
   if (error) {
@@ -249,18 +322,34 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
           
           <div className="answer-options">
             <div className="multiple-choice">
-              {currentQuestion.options.map((option, index) => (
-                <label key={index} className="option-label">
-                  <input
-                    type="radio"
-                    name={currentQuestion.id}
-                    value={option}
-                    checked={answers[currentQuestion.id] === option}
-                    onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                  />
-                  <span className="option-text">{option}</span>
-                </label>
-              ))}
+              {currentQuestion.options.map((option, index) => {
+                const isSelected = answers[currentQuestion.id] === option;
+                const feedback = answerFeedback[currentQuestion.id];
+                const showFeedbackForOption = feedback && isSelected;
+                
+                return (
+                  <label key={index} className={`option-label ${isSelected ? 'selected' : ''} ${showFeedbackForOption ? 'has-feedback' : ''}`}>
+                    <input
+                      type="radio"
+                      name={currentQuestion.id}
+                      value={option}
+                      checked={isSelected}
+                      onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                    />
+                    <span className="option-text">{option}</span>
+                    {showFeedbackForOption && (
+                      <div className={`immediate-feedback ${feedback.is_correct ? 'correct' : 'incorrect'}`}>
+                        <div className="feedback-icon">
+                          {feedback.is_correct ? '✓' : '✗'}
+                        </div>
+                        <div className="feedback-text">
+                          {feedback.feedback_text || (feedback.is_correct ? 'Correct!' : 'Not quite right.')}
+                        </div>
+                      </div>
+                    )}
+                  </label>
+                );
+              })}
             </div>
           </div>
 
@@ -300,10 +389,10 @@ const QuizInterface: React.FC<QuizInterfaceProps> = ({
             ) : (
               <button
                 onClick={handleSubmitQuiz}
-                disabled={!isQuizComplete || loading}
+                disabled={!isQuizComplete || isLoading('submit')}
                 className="submit-button"
               >
-                {loading ? 'Submitting...' : 'Submit Quiz'}
+                {isLoading('submit') ? 'Submitting...' : 'Submit Quiz'}
               </button>
             )}
           </div>

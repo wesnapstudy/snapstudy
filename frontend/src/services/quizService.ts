@@ -119,6 +119,37 @@ class QuizService {
     }
   }
 
+  async getImmediateFeedback(quizId: string, questionId: string, answer: string): Promise<any> {
+    try {
+      const response = await api.post('/api/v1/quiz/immediate-feedback', {
+        quiz_id: quizId,
+        question_id: questionId,
+        user_answer: answer,
+        user_id: 'current' // Will be handled by auth middleware
+      });
+      
+      return response.data.data;
+    } catch (error) {
+      console.error('Error getting immediate feedback:', error);
+      throw error;
+    }
+  }
+
+  async submitQuestionProgress(quizId: string, questionId: string, timeSpent: number, attempts: number): Promise<void> {
+    try {
+      await api.post('/api/v1/quiz/question-progress', {
+        quiz_id: quizId,
+        question_id: questionId,
+        time_spent_seconds: timeSpent,
+        attempts_count: attempts,
+        user_id: 'current' // Will be handled by auth middleware
+      });
+    } catch (error) {
+      console.error('Error submitting question progress:', error);
+      // Don't throw error as this is not critical
+    }
+  }
+
   startQuizTimer(): void {
     this.startTime = Date.now();
   }

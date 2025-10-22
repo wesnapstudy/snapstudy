@@ -42,7 +42,11 @@
 }
 
 .retry-button,
-.reload-button {
+.reload-button,
+.continue-button,
+.feedback-button,
+.submit-feedback-button,
+.cancel-feedback-button {
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 4px;
@@ -67,6 +71,48 @@
 
 .reload-button:hover {
   background-color: #545b62;
+}
+
+.continue-button {
+  background-color: #28a745;
+  color: white;
+}
+
+.continue-button:hover {
+  background-color: #1e7e34;
+}
+
+.feedback-button {
+  background-color: #17a2b8;
+  color: white;
+  margin-top: 1rem;
+}
+
+.feedback-button:hover {
+  background-color: #138496;
+}
+
+.submit-feedback-button {
+  background-color: #007bff;
+  color: white;
+}
+
+.submit-feedback-button:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.submit-feedback-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.cancel-feedback-button {
+  background-color: #dc3545;
+  color: white;
+}
+
+.cancel-feedback-button:hover {
+  background-color: #c82333;
 }
 
 .error-details {
@@ -161,4 +207,56 @@
     font-size: 0.75rem;
     padding: 0.5rem;
   }
+}/
+* Error feedback form styles */
+.error-feedback {
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #dee2e6;
+}
+
+.feedback-form {
+  text-align: left;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+.feedback-form h4 {
+  color: #495057;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.feedback-form p {
+  color: #6c757d;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.feedback-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  margin-bottom: 1rem;
+}
+
+.feedback-textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.feedback-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.feedback-actions button {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
 }

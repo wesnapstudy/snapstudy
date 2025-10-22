@@ -331,3 +331,38 @@ export interface ProfileConfig {
   guestEnabled: boolean;
   guestUser: User;
 }
+
+// Adaptive Learning Types
+export interface AdaptiveLearningState {
+  current_micro_lesson_id: string;
+  lesson_id: string;
+  progress: number;
+  next_content_type: 'micro_lesson' | 'quiz' | 'summary';
+  difficulty_adjustment: number;
+  learning_path: string[];
+  completed_micro_lessons: string[];
+}
+
+export interface AdaptiveContentRequest {
+  lesson_id: string;
+  current_micro_lesson_id?: string;
+  user_performance?: {
+    quiz_scores: number[];
+    time_spent: number;
+    engagement_level: number;
+  };
+  learning_preferences?: UserPreferences;
+}
+
+export interface AdaptiveContentResponse {
+  content_type: 'micro_lesson' | 'quiz' | 'summary';
+  micro_lesson?: MicroLesson;
+  quiz?: Quiz;
+  transition_reason: string;
+  progress_update: {
+    overall_progress: number;
+    micro_lesson_progress: number;
+    estimated_completion_time: number;
+  };
+  next_available: boolean;
+}

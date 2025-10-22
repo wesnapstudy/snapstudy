@@ -1,9 +1,16 @@
-import React from 'react';
-import { Lesson, MicroLesson } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Lesson, MicroLesson, AdaptiveLearningState, User } from '../types';
+import { lessonService } from '../services/lessonService';
+import QuizInterface from './QuizInterface';
+import { SkeletonLesson } from './SkeletonLoader';
+import { useLoadingState } from '../hooks/useLoadingState';
+import './LessonViewer.css';
 
 interface LessonViewerProps {
   lesson: Lesson | null;
   microLessons: MicroLesson[];
+  user: User;
+  onProgressUpdate?: (progress: number) => void;
 }
 
 // SVG Icons matching snapstudy.html
@@ -31,11 +38,202 @@ const SummaryIcon = () => (
   </svg>
 );
 
-const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, microLessons }) => {
+const LessonViewer: React.FC<LessonViewerProps> = ({ 
+  lesson, 
+  microLessons, 
+  user, 
+  onProgressUpdate 
+}) => {
+  const [adaptiveState, setAdaptiveState] = useState<AdaptiveLearningState | null>(null);
+  const [currentMicroLesson, setCurrentMicroLesson] = useState<MicroLesson | null>(null);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [transitionMessage, setTransitionMessage] = useState<string | null>(null);
+  
+  const { setLoading, isLoading } = useLoadingState();
+
+  // Initialize adaptive learning state
+  useEffect(() => {
+    if (lesson && microLessons.length > 0) {
+      initializeAdaptiveLearning();
+    }
+  }, [lesson, microLessons]);
+
+  const initializeAdaptiveLearning = useCallback(async () => {
+    if (!lesson) return;
+
+    try {
+      setLoading('initialization', true, { timeout: 10000 });
+      const state = await lessonService.initializeAdaptiveLearning(lesson.lesson_id, user.preferences);
+      setAdaptiveState(state);
+      
+      // Set the first micro lesson
+      const firstMicroLesson = microLessons.find(ml => ml.micro_lesson_id === state.current_micro_lesson_id);
+      if (firstMicroLesson) {
+        setCurrentMicroLesson(firstMicroLesson);
+      }
+    } catch (error) {
+      console.error('Failed to initialize adaptive learning:', error);
+      setError('Failed to start adaptive learning session');
+      // Fallback to first micro lesson
+      if (microLessons.length > 0) {
+        setCurrentMicroLesson(microLessons[0]);
+      }
+    } finally {
+      setLoading('initialization', false);
+    }
+  }, [lesson, microLessons, user.preferences]);
+
+  const handleNextContent = useCallback(async () => {
+    if (!lesson || !adaptiveState) return;
+
+    try {
+      setLoading('nextContent', true, { timeout: 15000 });
+      setTransitionMessage('Determining your next learning step...');
+      
+      const nextContent = await lessonService.getNextAdaptiveContent(
+        lesson.lesson_id,
+        adaptiveState.current_micro_lesson_id,
+        {
+          quiz_scores: [], // Will be populated from quiz results
+          time_spent: 0, // Track time spent on current content
+          engagement_level: 0.8 // Default engagement level
+        }
+      );
+
+      // Update progress
+      if (onProgressUpdate) {
+        onProgressUpdate(nextContent.progress_update.overall_progress);
+      }
+
+      // Handle different content types
+      if (nextContent.content_type === 'quiz') {
+        setShowQuiz(true);
+        setTransitionMessage(nextContent.transition_reason);
+      } else if (nextContent.content_type === 'micro_lesson' && nextContent.micro_lesson) {
+        setCurrentMicroLesson(nextContent.micro_lesson);
+        setTransitionMessage(nextContent.transition_reason);
+        
+        // Update adaptive state
+        setAdaptiveState(prev => prev ? {
+          ...prev,
+          current_micro_lesson_id: nextContent.micro_lesson!.micro_lesson_id,
+          progress: nextContent.progress_update.overall_progress,
+          completed_micro_lessons: [...prev.completed_micro_lessons, prev.current_micro_lesson_id]
+        } : null);
+      } else if (nextContent.content_type === 'summary') {
+        setTransitionMessage('Congratulations! You\'ve completed this lesson.');
+        // Handle lesson completion
+      }
+
+      // Clear transition message after a delay
+      setTimeout(() => setTransitionMessage(null), 3000);
+
+    } catch (error) {
+      console.error('Failed to get next adaptive content:', error);
+      setError('Failed to load next content');
+    } finally {
+      setLoading('nextContent', false);
+    }
+  }, [lesson, adaptiveState, onProgressUpdate]);
+
+  const handleQuizComplete = useCallback(async (results: any) => {
+    setShowQuiz(false);
+    
+    // Update adaptive state with quiz performance
+    if (adaptiveState) {
+      await lessonService.updateLearningProgress(
+        adaptiveState.lesson_id,
+        adaptiveState.current_micro_lesson_id,
+        {
+          quiz_score: results.overall_score,
+          time_spent: results.time_spent_seconds,
+          engagement_level: results.overall_score / 100
+        }
+      );
+    }
+
+    // Automatically proceed to next content
+    setTimeout(() => {
+      handleNextContent();
+    }, 1000);
+  }, [adaptiveState, handleNextContent]);
+
+  const handleActionClick = useCallback((action: string, microLesson: MicroLesson) => {
+    switch (action) {
+      case 'quiz':
+        setShowQuiz(true);
+        break;
+      case 'next':
+        handleNextContent();
+        break;
+      case 'video':
+        // Handle video playback
+        if (microLesson.video_url) {
+          window.open(microLesson.video_url, '_blank');
+        }
+        break;
+      case 'audio':
+        // Handle audio playback
+        if (microLesson.audio_url) {
+          window.open(microLesson.audio_url, '_blank');
+        }
+        break;
+      default:
+        break;
+    }
+  }, [handleNextContent]);
+
+  if (isLoading('initialization') && !currentMicroLesson) {
+    return <SkeletonLesson className="lesson-viewer-skeleton" />;
+  }
+
+  if (error) {
+    return (
+      <div className="lesson-viewer-error">
+        <h3>Unable to load lesson</h3>
+        <p>{error}</p>
+        <button onClick={initializeAdaptiveLearning}>Try Again</button>
+      </div>
+    );
+  }
+
+  if (showQuiz && lesson) {
+    return (
+      <QuizInterface
+        lessonId={lesson.lesson_id}
+        user={user}
+        onQuizComplete={handleQuizComplete}
+        onClose={() => setShowQuiz(false)}
+      />
+    );
+  }
+
   return (
     <>
-      <div className="panel-header">My Snaps</div>
+      <div className="panel-header">
+        <span>My Snaps</span>
+        {adaptiveState && (
+          <div className="progress-indicator">
+            <div className="progress-bar">
+              <div 
+                className="progress-fill" 
+                style={{ width: `${adaptiveState.progress}%` }}
+              ></div>
+            </div>
+            <span className="progress-text">{Math.round(adaptiveState.progress)}% Complete</span>
+          </div>
+        )}
+      </div>
+      
       <div className="panel-body">
+        {transitionMessage && (
+          <div className="transition-message">
+            <div className="transition-icon">🎯</div>
+            <p>{transitionMessage}</p>
+          </div>
+        )}
+
         {!lesson || microLessons.length === 0 ? (
           <>
             {/* Default content matching snapstudy.html */}
@@ -89,35 +287,84 @@ const LessonViewer: React.FC<LessonViewerProps> = ({ lesson, microLessons }) => 
               </div>
             </div>
           </>
-        ) : (
-          microLessons.map((microLesson, index) => (
-            <div key={microLesson.micro_lesson_id} className="card">
-              <h3>{microLesson.title}</h3>
-              <p>{microLesson.summary}</p>
+        ) : currentMicroLesson ? (
+          <div className="adaptive-lesson-container">
+            <div key={currentMicroLesson.micro_lesson_id} className="card current-lesson">
+              <div className="lesson-header">
+                <h3>{currentMicroLesson.title}</h3>
+                {adaptiveState && (
+                  <span className="lesson-sequence">
+                    Lesson {currentMicroLesson.sequence_number} of {microLessons.length}
+                  </span>
+                )}
+              </div>
+              <p>{currentMicroLesson.summary}</p>
               <div className="actions">
-                {microLesson.video_url && (
-                  <button className="icon-btn">
+                {currentMicroLesson.video_url && (
+                  <button 
+                    className="icon-btn"
+                    onClick={() => handleActionClick('video', currentMicroLesson)}
+                  >
                     <span className="ico"><PlayIcon /></span>
                     <span>Video</span>
+                    {currentMicroLesson.video_duration && (
+                      <span className="meta">{currentMicroLesson.video_duration}</span>
+                    )}
                   </button>
                 )}
-                {microLesson.audio_url && (
-                  <button className="icon-btn">
+                {currentMicroLesson.audio_url && (
+                  <button 
+                    className="icon-btn"
+                    onClick={() => handleActionClick('audio', currentMicroLesson)}
+                  >
                     <span className="ico"><AudioIcon /></span>
                     <span>Audio</span>
+                    {currentMicroLesson.audio_duration && (
+                      <span className="meta">{currentMicroLesson.audio_duration}</span>
+                    )}
                   </button>
                 )}
-                <button className="icon-btn">
+                <button 
+                  className="icon-btn"
+                  onClick={() => handleActionClick('quiz', currentMicroLesson)}
+                >
                   <span className="ico"><QuizIcon /></span>
                   <span>Quiz</span>
                 </button>
-                <button className="icon-btn">
-                  <span className="ico"><SummaryIcon /></span>
-                  <span>Summary</span>
+                <button 
+                  className="icon-btn primary"
+                  onClick={() => handleActionClick('next', currentMicroLesson)}
+                  disabled={isLoading('nextContent')}
+                >
+                  <span className="ico">→</span>
+                  <span>{isLoading('nextContent') ? 'Loading...' : 'Continue'}</span>
                 </button>
               </div>
             </div>
-          ))
+
+            {/* Show upcoming lessons preview */}
+            {adaptiveState && adaptiveState.learning_path.length > 1 && (
+              <div className="upcoming-lessons">
+                <h4>Coming Up Next</h4>
+                <div className="lesson-preview">
+                  {microLessons
+                    .filter(ml => adaptiveState.learning_path.includes(ml.micro_lesson_id))
+                    .slice(1, 3)
+                    .map(ml => (
+                      <div key={ml.micro_lesson_id} className="preview-card">
+                        <h5>{ml.title}</h5>
+                        <p>{ml.summary.substring(0, 100)}...</p>
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="no-content">
+            <p>No content available for this lesson.</p>
+          </div>
         )}
       </div>
     </>

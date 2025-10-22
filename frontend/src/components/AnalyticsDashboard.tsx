@@ -3,6 +3,8 @@ import { AnalyticsDashboard as AnalyticsDashboardType, User, LearningVelocity } 
 import { analyticsService } from '../services/analyticsService';
 import ProgressCharts from './ProgressCharts';
 import PerformanceMetrics from './PerformanceMetrics';
+import { SkeletonDashboard } from './SkeletonLoader';
+import { useLoadingState } from '../hooks/useLoadingState';
 import './AnalyticsDashboard.css';
 
 // SVG Icons matching main screen style
@@ -75,9 +77,10 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ user }) => {
   const [velocity, setVelocity] = useState<LearningVelocity | null>(null);
   const [strugglingConcepts, setStrugglingConcepts] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState(7);
+  
+  const { setLoading, isLoading } = useLoadingState();
 
   useEffect(() => {
     loadAnalyticsData();
@@ -85,7 +88,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ user }) => {
 
   const loadAnalyticsData = async () => {
     try {
-      setLoading(true);
+      setLoading('dashboard', true, { timeout: 15000 });
       setError(null);
 
       // Load all analytics data in parallel
@@ -110,7 +113,7 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ user }) => {
       console.error('Failed to load analytics data:', error);
       setError('Failed to load analytics data. Please try again.');
     } finally {
-      setLoading(false);
+      setLoading('dashboard', false);
     }
   };
 
@@ -146,13 +149,8 @@ const AnalyticsDashboard: React.FC<AnalyticsDashboardProps> = ({ user }) => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="analytics-dashboard loading">
-        <div className="loading-spinner"></div>
-        <p>Loading your learning analytics...</p>
-      </div>
-    );
+  if (isLoading('dashboard')) {
+    return <SkeletonDashboard className="analytics-dashboard-skeleton" />;
   }
 
   if (error) {
